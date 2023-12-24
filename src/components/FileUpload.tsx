@@ -6,7 +6,7 @@ interface FileUploadProps {
 }
 
 const FileUpload: React.FC<FileUploadProps> = ({ onUploadSuccess }) => {
-    const [file, setFile] = useState<File | null>(null); // State for the selected file
+    const [file, setFile] = useState<File | null>(null);
     const [uploading, setUploading] = useState(false);
 
     const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -15,34 +15,48 @@ const FileUpload: React.FC<FileUploadProps> = ({ onUploadSuccess }) => {
         }
     };
 
+    const extractTitleFromFileName = (fileName: string) => {
+        // Remove file extension and replace underscores/dashes with spaces
+        return fileName.replace(/\.[^/.]+$/, '').replace(/[_-]/g, ' ');
+    };
+
     const handleFileUpload = async () => {
-      if (!file) return;
+        if (!file) {
+            console.log("No file selected for upload");
+            return;
+        }
 
-      // Validate file type and size here (if needed)
+        setUploading(true);
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('title', extractTitleFromFileName(file.name)); // Extract and append title
 
-      setUploading(true);
-      try {
-          const success = await uploadTrack(file);
-          if (success) {
-              console.log('Track uploaded successfully');
-              onUploadSuccess();
-          } else {
-              console.error('Track upload failed');
-          }
-      } catch (error: any) { // Type assertion for error
-          console.error('Upload error:', error.message);
-      } finally {
-          setUploading(false);
-      }
-  };
+            // Log formData contents for debugging
+            for (const [key, value] of formData.entries()) {
+                console.log(`${key}: ${value}`);
+            }
+
+            const success = await uploadTrack(formData); // Send formData with file and title
+            if (success) {
+                console.log('Track uploaded successfully');
+                onUploadSuccess();
+            } else {
+                console.error('Track upload failed with no error thrown');
+            }
+        } catch (error) {
+            console.error('Error during file upload:', error);
+        } finally {
+            setUploading(false);
+        }
+    };
 
     return (
-      <div>
-        <input type="file" onChange={handleFileSelect} disabled={uploading} />
-        <button onClick={handleFileUpload} disabled={uploading}>Upload</button>
-        {uploading && <p>Uploading...</p>}
-        {/* Optionally, add drag-and-drop functionality */}
-      </div>
+        <div>
+            <input type="file" onChange={handleFileSelect} disabled={uploading} />
+            <button onClick={handleFileUpload} disabled={uploading}>Upload</button>
+            {uploading && <p>Uploading...</p>}
+        </div>
     );
 };
 

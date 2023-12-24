@@ -13,7 +13,8 @@
     "next": "14.0.4",
     "node-fetch": "^3.3.2",
     "react": "^18",
-    "react-dom": "^18"
+    "react-dom": "^18",
+    "wavesurfer.js": "^7.5.4"
   },
   "devDependencies": {
     "@types/node": "^20",

@@ -1,4 +1,7 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3000';
+if (!process.env.NEXT_PUBLIC_BACKEND_URL) {
+  throw new Error("Backend URL is not defined in .env.local");
+}
+const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL as string;
 
 const handleResponse = async (response: Response) => {
   if (!response.ok) {
@@ -10,7 +13,7 @@ const handleResponse = async (response: Response) => {
 
 export const fetchTracks = async () => {
   try {
-    const response = await fetch(`${API_BASE_URL}/tracks`);
+    const response = await fetch(`${backendUrl}/tracks`);
     return await handleResponse(response);
   } catch (error: any) { // Type assertion for error
     console.error('Error fetching tracks:', error.message);
@@ -18,17 +21,34 @@ export const fetchTracks = async () => {
   }
 };
 
-export const uploadTrack = async (file: File) => {
-  const formData = new FormData();
-  formData.append('track', file);
+export const uploadTrack = async (formData: FormData) => {
+  console.log("Preparing to upload file");
+
+  // Log the contents of formData for debugging
+  // Convert formData keys to an array and log them
+  const formDataKeys = Array.from(formData.keys());
+  for (let key of formDataKeys) {
+    console.log(key, formData.get(key));
+  }
 
   try {
-    const response = await fetch(`${API_BASE_URL}/upload`, {
+    console.log("Sending upload request to server");
+    const response = await fetch(`${backendUrl}/tracks/uploads`, {
       method: 'POST',
       body: formData,
     });
-    return await handleResponse(response);
-  } catch (error: any) { // Type assertion for error
+
+    console.log("Received response from upload request", response);
+
+    if (!response.ok) {
+      console.error('Response status:', response.status);
+      const errorData = await response.json();
+      console.error('Response error data:', errorData);
+      throw new Error(errorData.message || 'Error uploading track');
+    }
+
+    return await response.json();
+  } catch (error: any) {
     console.error('Error uploading track:', error.message);
     throw error;
   }

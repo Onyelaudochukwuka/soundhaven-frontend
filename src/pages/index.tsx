@@ -1,21 +1,30 @@
 import React, { useEffect, useState } from 'react';
 import Head from 'next/head';
 import TracksTable from '../components/TracksTable';
-import TransportControls from '../components/TransportControls';
 import FileUpload from '../components/FileUpload';
 import { fetchTracks, uploadTrack } from '../services/apiService';
 import ErrorMessage from '../components/ErrorMessage';
+import AudioPlayer from '@/components/AudioPlayer';
+import { Track } from '@/types';
 
 const HomePage: React.FC = () => {
-  const [tracks, setTracks] = useState([]); // State to store tracks
+  console.log('Backend URL:', process.env.NEXT_PUBLIC_BACKEND_URL);
+
+  const [tracks, setTracks] = useState<Track[]>([]);
   const [error, setError] = useState('');
 
   const loadTracks = async () => {
     try {
       const fetchedTracks = await fetchTracks();
       setTracks(fetchedTracks);
-    } catch (error) {
-      setError(error.message);
+    } catch (error: unknown) { // Add type annotation
+      if (error instanceof Error) {
+        // If error is an instance of Error, safely access its message property
+        setError(error.message);
+      } else {
+        // Handle cases where error is not an instance of Error
+        setError("An unexpected error occurred");
+      }
     }
   };
 
@@ -50,7 +59,16 @@ const HomePage: React.FC = () => {
       </main>
 
       <footer className="p-4">
-        <TransportControls />
+        <div>
+          {tracks.map(track => {
+            return (
+              <div key={track.id}>
+                <h3>{track.title}</h3>
+                <AudioPlayer url={`${process.env.NEXT_PUBLIC_BACKEND_URL}/${track.filePath}`} />
+              </div>
+            );
+          })}
+        </div>
       </footer>
     </div>
   );
