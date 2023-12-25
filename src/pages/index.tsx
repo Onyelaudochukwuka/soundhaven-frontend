@@ -38,7 +38,7 @@ const HomePage: React.FC = () => {
       <Header />
       <div className="bg-red-500 p-4 text-white">Test Tailwind</div>
       <MainContent tracks={tracks} error={error} loadTracks={loadTracks} />
-      <Footer tracks={tracks} />
+      <Footer />
     </div>
   );
 };

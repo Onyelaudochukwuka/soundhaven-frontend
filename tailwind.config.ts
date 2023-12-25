@@ -1,9 +1,9 @@
 module.exports = {
   content: [
-    './pages/**/*.tsx', 
-    './components/**/*.tsx'
+    '.src/pages/**/*.{js,ts,jsx,tsx}',
+    '.src/components/**/*.{js,ts,jsx,tsx}'
   ],
-  darkMode: 'media', 
+  darkMode: 'media',
   theme: {
     extend: {
       fontFamily: {

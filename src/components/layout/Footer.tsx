@@ -1,21 +1,20 @@
-// components/Footer.jsx
+// components/Footer.tsx
 import React from 'react';
-import AudioPlayer from '../AudioPlayer';
-import { Track } from '@/types';
 
-interface FooterProps {
-  tracks: Track[];
-}
-
-const Footer: React.FC<FooterProps> = ({ tracks }) => {
+const Footer: React.FC = () => {
   return (
-    <footer className="p-4">
-      {tracks.map(track => (
-        <div key={track.id}>
-          <h3>{track.title}</h3>
-          <AudioPlayer url={`${process.env.NEXT_PUBLIC_BACKEND_URL}/${track.filePath}`} />
-        </div>
-      ))}
+    <footer className="bg-gray-200 text-gray-600 body-font">
+      <div className="container px-5 py-8 mx-auto flex items-center sm:flex-row flex-col">
+        <p className="text-sm text-gray-500 sm:ml-6 sm:mt-0 mt-4">
+          © {new Date().getFullYear()} SoundHaven —
+          <a href="https://github.com/alexdwagner" className="text-gray-600 ml-1" rel="noopener noreferrer" target="_blank">@alexdwagner</a>
+        </p>
+        <span className="inline-flex sm:ml-auto sm:mt-0 mt-4 justify-center sm:justify-start">
+          <a href="#" className="text-gray-500">
+            {/* Social icons can be added here */}
+          </a>
+        </span>
+      </div>
     </footer>
   );
 };

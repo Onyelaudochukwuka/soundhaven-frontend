@@ -52,7 +52,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ onUploadSuccess }) => {
     };
 
     return (
-        <div>
+        <div className='p-4 mt-8 bg-gray-100 rounded-lg'>
             <input type="file" onChange={handleFileSelect} disabled={uploading} />
             <button onClick={handleFileUpload} disabled={uploading}>Upload</button>
             {uploading && <p>Uploading...</p>}

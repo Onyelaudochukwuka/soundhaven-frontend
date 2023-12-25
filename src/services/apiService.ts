@@ -53,3 +53,33 @@ export const uploadTrack = async (formData: FormData) => {
     throw error;
   }
 };
+
+export const deleteTrack = async (id: number) => {
+  try {
+    const response = await fetch(`${backendUrl}/tracks/${id}`, {
+      method: 'DELETE',
+    });
+    await handleResponse(response);
+  } catch (error: any) {
+    console.error('Error deleting track:', error.message);
+    throw error;
+  }
+};
+
+export const updateTrackMetadata = async (trackId: number, updatedData: Partial<Track>) => {
+  const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL as string;
+  const response = await fetch(`${backendUrl}/tracks/${trackId}`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(updatedData),
+  });
+  
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.message || 'Error updating track');
+  }
+
+  return response.json();
+};
