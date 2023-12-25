@@ -33,7 +33,7 @@ export const uploadTrack = async (formData: FormData) => {
 
   try {
     console.log("Sending upload request to server");
-    const response = await fetch(`${backendUrl}/tracks/uploads`, {
+    const response = await fetch(`${backendUrl}/tracks/upload`, { 
       method: 'POST',
       body: formData,
     });

@@ -23,28 +23,30 @@ interface TracksTableProps {
 
 const TracksTable: React.FC<TracksTableProps> = ({ tracks }) => {
   return (
-    <table>
-      <thead>
-        <tr>
-          <th>Title</th>
-          <th>Artist</th> {/* Artist header added */}
-          <th>Album</th>
-          <th>Duration</th>
-          <th>Play</th>
-        </tr>
-      </thead>
-      <tbody>
-        {tracks.map(track => (
-          <tr key={track.id}>
-            <td>{track.title}</td>
-            <td>{/* Artist name, if available */}</td>
-            <td>{track.album ? track.album.title : 'No Album'}</td>
-            <td>{track.duration}</td>
-            <td>{/* Play Button */}</td>
+    <div className="overflow-x-auto w-full">
+      <table className="min-w-full leading-normal">
+        <thead>
+          <tr className="text-center font-bold">
+            <th className="px-5 py-3 border-b-2 border-gray-200 bg-gray-100">Title</th>
+            <th className="px-5 py-3 border-b-2 border-gray-200 bg-gray-100">Artist</th>
+            <th className="px-5 py-3 border-b-2 border-gray-200 bg-gray-100">Album</th>
+            <th className="px-5 py-3 border-b-2 border-gray-200 bg-gray-100">Duration</th>
+            <th className="px-5 py-3 border-b-2 border-gray-200 bg-gray-100">Play</th>
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {tracks.map(track => (
+            <tr key={track.id} className="text-center">
+              <td className="px-5 py-5 border-b border-gray-200 bg-white">{track.title}</td>
+              <td className="px-5 py-5 border-b border-gray-200 bg-white">{/* Artist name */}</td>
+              <td className="px-5 py-5 border-b border-gray-200 bg-white">{track.album ? track.album.title : 'No Album'}</td>
+              <td className="px-5 py-5 border-b border-gray-200 bg-white">{track.duration}</td>
+              <td className="px-5 py-5 border-b border-gray-200 bg-white">{/* Play Button */}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 };
 
