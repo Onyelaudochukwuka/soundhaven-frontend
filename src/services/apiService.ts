@@ -1,7 +1,9 @@
+import { Track, Album, Artist } from '@/types';
+
 if (!process.env.NEXT_PUBLIC_BACKEND_URL) {
   throw new Error("Backend URL is not defined in .env.local");
 }
-const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL as string;
+export const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL as string;
 
 const handleResponse = async (response: Response) => {
   if (!response.ok) {
@@ -82,4 +84,33 @@ export const updateTrackMetadata = async (trackId: number, updatedData: Partial<
   }
 
   return response.json();
+};
+
+
+export const fetchArtists = async (): Promise<Artist[]> => {
+  const response = await fetch(`${backendUrl}/artists`);
+  return handleResponse(response);
+};
+
+export const fetchAlbums = async (): Promise<Album[]> => {
+  const response = await fetch(`${backendUrl}/albums`);
+  return handleResponse(response);
+};
+
+export const createArtist = async (artistData: Partial<Artist>): Promise<Artist> => {
+  const response = await fetch(`${backendUrl}/artists`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(artistData),
+  });
+  return handleResponse(response);
+};
+
+export const createAlbum = async (albumData: Partial<Album>): Promise<Album> => {
+  const response = await fetch(`${backendUrl}/albums`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(albumData),
+  });
+  return handleResponse(response);
 };

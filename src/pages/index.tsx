@@ -29,7 +29,8 @@ const HomePage: React.FC = () => {
   }, []);
 
   return (
-    <div className="flex flex-col min-h-screen font-dyslexic">
+  <div className='flex-col'>
+    <div className="flex min-h-screen font-dyslexic">
       <Head>
         <title>SoundHaven</title>
         <meta name="description" content="Discover and manage music with SoundHaven" />
@@ -38,8 +39,10 @@ const HomePage: React.FC = () => {
       <Header />
       <div className="bg-red-500 p-4 text-white">Test Tailwind</div>
       <MainContent tracks={tracks} error={error} loadTracks={loadTracks} />
-      <Footer />
     </div>
+    <Footer />
+
+  </div>  
   );
 };
 
