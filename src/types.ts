@@ -32,7 +32,7 @@ export interface User {
   
   export interface Album {
     id: number;
-    title: string;
+    name: string; 
     releaseDate: string;
     artistId: number;
     artist: Artist;
@@ -41,9 +41,10 @@ export interface User {
   
   export interface Track {
     id: number;
-    title: string;
-    artist: string; 
+    name: string;
     duration: number;
+    artistId?: number;
+    artist?: Artist;
     albumId?: number;
     album?: Album;
     createdAt: string;
@@ -104,3 +105,7 @@ export interface User {
     playbackSpeed: number;
     volume: number;
   }
+
+  export type TrackUpdatePayload = {
+    [P in keyof Track]?: string;
+  };

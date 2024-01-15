@@ -1,8 +1,11 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faPlay } from '@fortawesome/free-solid-svg-icons';
 import { Track, Artist, Album } from '@/types';
-import { deleteTrack, fetchArtists, fetchAlbums, createArtist, createAlbum } from '../services/apiService';
+import { deleteTrack, fetchArtists, fetchAlbums } from '../services/apiService';
+import Modal from './Modal'; // Import your modal component
+import EditTrackForm from './EditTrackForm';
+import { serializeValue } from '@/utils';
 
 interface TracksTableProps {
   tracks: Track[];
@@ -11,182 +14,129 @@ interface TracksTableProps {
   onSelectTrack: (trackFilePath: string, trackIndex: number) => void;
 }
 
-const TracksTable: React.FC<TracksTableProps & { isEditing: boolean, setIsEditing: (isEditing: boolean) => void }> = ({ tracks, onDelete, onUpdate, onSelectTrack, isEditing, setIsEditing }) => {
-  const [editCell, setEditCell] = useState<{ id: number, field: keyof Track } | null>(null);
-  const [editValue, setEditValue] = useState('');
+const TracksTable: React.FC<TracksTableProps> = ({ tracks, onDelete, onUpdate, onSelectTrack }) => {
+  console.log("Received tracks:", tracks);
+
   const [artists, setArtists] = useState<Artist[]>([]);
   const [albums, setAlbums] = useState<Album[]>([]);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingTrack, setEditingTrack] = useState<Track | null>(null);
 
-    // Fetch artists and albums
-    useEffect(() => {
-      const loadArtistsAndAlbums = async () => {
-        const artistsData = await fetchArtists();
-        const albumsData = await fetchAlbums();
-        setArtists(artistsData);
-        setAlbums(albumsData);
-      };
-      loadArtistsAndAlbums();
-    }, []);
+  console.log("TracksTable received tracks: ", tracks);
 
-  const handleDoubleClick = (track: Track, field: keyof Track) => {
-    // Prevent editing of the duration field
-    if (field === 'duration') {
-      return;
-    }
-  
-    setEditCell({ id: track.id, field });
-    let initialValue = '';
-    if (field === 'album') {
-      initialValue = track.album?.title ?? ''; // Correct for album
-    } else if (field === 'artist') {
-      initialValue = track.artist ?? 'Unknown Artist'; // Correct for artist
-    } else {
-      initialValue = track[field] as string; // Directly use the string value for other fields
-    }
-    setEditValue(initialValue);
-    setIsEditing(true);
-  };
-  
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    setEditValue(e.target.value);
-  };
-
-  const handleBlur = async () => {
-    if (editCell) {
-      if (editCell.field === 'artist' && editValue === 'create_new') {
-        const artistName = prompt('Enter new artist name:');
-        if (artistName) {
-          const newArtist = await createArtist({ name: artistName });
-          setArtists([...artists, newArtist]);
-          onUpdate(editCell.id, editCell.field, artistName); // Update the track with the new artist
+  // Fetch artists and albums only once on component mount
+  useEffect(() => {
+    let isMounted = true;
+    const loadArtistsAndAlbums = async () => {
+      try {
+        const [loadedArtists, loadedAlbums] = await Promise.all([fetchArtists(), fetchAlbums()]);
+        if (isMounted) {
+          setArtists(loadedArtists);
+          setAlbums(loadedAlbums);
         }
-      } else if (editCell.field === 'album' && editValue === 'create_new') {
-        const albumTitle = prompt('Enter new album title:');
-        if (albumTitle) {
-          const newAlbum = await createAlbum({ title: albumTitle });
-          setAlbums([...albums, newAlbum]);
-          onUpdate(editCell.id, editCell.field, albumTitle); // Update the track with the new album
-        }
-      } else {
-        onUpdate(editCell.id, editCell.field, editValue);
+      } catch (error) {
+        console.error('Error fetching artists/albums:', error);
       }
-      setEditCell(null);
-    }
-  };  
+    };
+    loadArtistsAndAlbums();
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      handleBlur();
-    } else if (e.key === ' ') {
-      e.stopPropagation(); // Stop the event from propagating
-      // Allow default behavior for spacebar (adding space)
-    }
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const openModal = (track: Track) => {
+    setEditingTrack(track);
+    setIsModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setEditingTrack(null);
+  };
+
+  const handleSave = (updatedTrackData: Partial<Track>) => {
+    if (!editingTrack) return;
+
+    (Object.keys(updatedTrackData) as Array<keyof Track>).forEach(field => {
+      // Ensure the current field exists on editingTrack before comparing
+      if (editingTrack.hasOwnProperty(field)) {
+        const oldValue = editingTrack[field];
+        const newValue = updatedTrackData[field];
+
+        if (oldValue !== newValue) {
+          const valueToUpdate: string = serializeValue(newValue);
+          onUpdate(editingTrack.id, field, valueToUpdate);
+        }
+      }
+    });
+
+    closeModal();
   };
 
   const handleDelete = async (id: number, event: React.MouseEvent) => {
-    event.stopPropagation(); // Prevent triggering onSelectTrack when deleting
-    try {
-      await deleteTrack(id);
-      onDelete(id); // Call the callback to update the state
-    } catch (error) {
-      console.error('Failed to delete the track:', error);
-    }
+    event.stopPropagation();
+    await deleteTrack(id);
+    onDelete(id);
   };
 
-  const handleCreateNew = async (field: keyof Track, trackId: number) => {
-    if (field === 'artist') {
-      const artistData = { /* ... */ }; // Define artist data
-      const newArtist = await createArtist(artistData);
-      const artistName = newArtist.name; // Extract the artist's name
-      onUpdate(trackId, field, artistName);
-    } else if (field === 'album') {
-      const albumData = { /* ... */ }; // Define album data
-      const newAlbum = await createAlbum(albumData);
-      const albumTitle = newAlbum.title; // Extract the album's title
-      onUpdate(trackId, field, albumTitle);
-    }
+  const handleDoubleClickOnRow = (track: Track, index: number) => {
+    track.filePath && onSelectTrack(track.filePath, index);
+  };
+
+  const [openMenuTrackId, setOpenMenuTrackId] = useState<number | null>(null);
+
+  const toggleMenu = (id: number, event: React.MouseEvent) => {
+    event.stopPropagation(); // This prevents the double-click event for playback
+    setOpenMenuTrackId(openMenuTrackId === id ? null : id);
   };
 
   return (
-    <table>
-      <thead>
-        <tr>
-          <th className="text-left px-4 py-2">Play</th>
-          <th className="text-left px-4 py-2">Title</th>
-          <th className="text-left px-4 py-2">Artist</th>
-          <th className="text-left px-4 py-2">Album</th>
-          <th className="text-left px-4 py-2">Duration</th>
-          <th className="text-left px-4 py-2">Delete</th>
-        </tr>
-      </thead>
-      <tbody>
-        {tracks.map((track, index) => (
-          <tr key={track.id}>
-            <td className="px-4 py-2">
-              <button onClick={(e) => {
-                e.stopPropagation();
-                track.filePath && onSelectTrack(track.filePath, index);
-              }}>
-                <FontAwesomeIcon icon={faPlay} />
-              </button>
-            </td>
-            {['title', 'artist', 'album', 'duration'].map((field) => {
-              const isEditing = editCell?.id === track.id && editCell.field === field;
-  
-              let cellValue: React.ReactNode;
-              if (isEditing) {
-                if (field === 'artist' || field === 'album') {
-                  cellValue = (
-                    <select value={editValue} onChange={handleInputChange} onBlur={handleBlur}>
-                      {field === 'artist' && artists.map(a => <option key={a.id} value={a.name}>{a.name}</option>)}
-                      {field === 'album' && albums.map(a => <option key={a.id} value={a.title}>{a.title}</option>)}
-                      <option value="create_new">Create New</option>
-                    </select>
-                  );
-                } else {
-                  cellValue = (
-                    <input
-                      type="text"
-                      value={editValue}
-                      onChange={handleInputChange}
-                      onBlur={handleBlur}
-                      autoFocus
-                    />
-                  );
-                }
-              } else {
-                switch (field) {
-                  case 'album':
-                    cellValue = track.album?.title ?? 'No Album';
-                    break;
-                  case 'artist':
-                    cellValue = track.artist ?? 'Unknown Artist';
-                    break;
-                  default:
-                    cellValue = track[field as keyof Track]?.toString() ?? '';
-                    break;
-                }
-              }
-  
-              return (
-                <td
-                  key={field}
-                  className="px-4 py-2"
-                  onDoubleClick={() => handleDoubleClick(track, field as keyof Track)}
-                >
-                  {cellValue}
-                </td>
-              );
-            })}
-            <td className="px-4 py-2">
-              <button onClick={(e) => handleDelete(track.id, e)}>X</button>
-            </td>
+    <>
+      <table className="min-w-full divide-y divide-gray-200">
+        <thead className="bg-gray-50">
+          <tr>
+            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
+            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Artist</th>
+            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Album</th>
+            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Duration</th>
+            <th className="px-4 py-2"></th>
           </tr>
-        ))}
-      </tbody>
-    </table>
-  ); 
-}; 
+        </thead>
+        <tbody className="bg-white divide-y divide-gray-200">
+          {tracks.map((track, index) => (
+            <tr key={track.id} onDoubleClick={() => handleDoubleClickOnRow(track, index)}>
+            <td className="px-4 py-2">{track.name}</td>
+            <td className="px-4 py-2">{track.artist?.name ?? 'Unknown Artist'}</td>
+            <td className="px-4 py-2">{track.album?.name ?? 'No Album'}</td>
+            <td className="px-4 py-2">{track.duration}</td>
+            <td className="px-4 py-2">
+                <button onClick={(e) => toggleMenu(track.id, e)}>•••</button>
+                {openMenuTrackId === track.id && (
+                  <div className="menu">
+                    <button onClick={() => openModal(track)}>Edit Metadata</button>
+                    <button onClick={(e) => { 
+                      e.stopPropagation();
+                      handleDelete(track.id, e);
+                    }}>Delete Track</button>
+                    {/* More options can be added here */}
+                  </div>
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <Modal isOpen={isModalOpen} onClose={closeModal}>
+        {editingTrack && (
+          <EditTrackForm
+            track={editingTrack}
+            onSave={handleSave}
+          />
+        )}
+      </Modal>
+    </>
+  );
+};
 
 export default TracksTable;

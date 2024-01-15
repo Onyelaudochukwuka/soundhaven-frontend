@@ -25,6 +25,7 @@ const MainContent: React.FC<MainContentProps> = ({ tracks, error, loadTracks, up
   };
 
   const handleUpdateTrack = async (trackId: number, field: string, value: string) => {
+    console.log(`Attempting to send PATCH request: ${trackId}, ${field}, ${value}`);
     try {
       const response = await fetch(`/api/tracks/${trackId}`, {
         method: 'PATCH',
@@ -33,25 +34,26 @@ const MainContent: React.FC<MainContentProps> = ({ tracks, error, loadTracks, up
         },
         body: JSON.stringify({ [field]: value }),
       });
-
+  
       if (!response.ok) {
         throw new Error('Failed to update the track');
       }
-
-
-      if (updateTracksState) {
-        const updatedTrack = await response.json();
-        updateTracksState(tracks.map(track => track.id === trackId ? { ...track, [field]: value } : track));
-      }
-      // Update localTracks state to reflect the change
-      setLocalTracks(prevTracks => prevTracks.map(track =>
-        track.id === trackId ? { ...track, [field]: value } : track
+  
+      const updatedTrack = await response.json();
+      setLocalTracks(prevTracks => prevTracks.map(track => 
+        track.id === trackId ? { ...track, [field]: updatedTrack[field] } : track
       ));
-
-    } catch (error) {
-      console.error('Error updating track:', error);
-    }
+      if (updateTracksState) {
+        updateTracksState(localTracks);
+      }
+  
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        console.error('Error updating track:', error.message);
+      }
+    }  
   };
+  
 
   useEffect(() => {
     const handleSpacebar = (event: KeyboardEvent) => {
@@ -119,8 +121,6 @@ const MainContent: React.FC<MainContentProps> = ({ tracks, error, loadTracks, up
         onDelete={handleDelete}
         onSelectTrack={handleSelectTrack}
         onUpdate={handleUpdateTrack}
-        isEditing={isEditing}
-        setIsEditing={setIsEditing}
       />
     </main>
   );

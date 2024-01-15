@@ -30,7 +30,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ onUploadSuccess }) => {
         try {
             const formData = new FormData();
             formData.append('file', file);
-            formData.append('title', extractTitleFromFileName(file.name)); // Extract and append title
+            formData.append('name', extractTitleFromFileName(file.name)); // Extract and append title
 
             // Log formData contents for debugging
             for (const [key, value] of formData.entries()) {

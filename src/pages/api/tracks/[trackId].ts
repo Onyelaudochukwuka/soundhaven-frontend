@@ -1,61 +1,36 @@
-// pages/api/tracks/[trackId].ts
+// pages/api/tracks/index.ts
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { backendUrl } from '../../../services/apiService';
 
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
-  const { trackId } = req.query;
   const { method } = req;
+  const backendApiUrl = process.env.BACKEND_API_URL; 
 
-  switch (method) {
-    case 'GET':
-      // Logic to fetch a specific track by trackId
-      res.status(200).json({ message: `Fetching track with ID: ${trackId}` });
-      break;
+  if (!backendApiUrl) {
+    res.status(500).json({ message: "Backend API URL is not configured" });
+    return;
+  }
 
-    case 'PUT':
-      // Useful for when we implement music recognition API, to replace all track data in one request
-      // when a match is found.
-      res.status(200).json({ message: `Updating track with ID: ${trackId}` });
-      break;
+  if (method !== 'GET') {
+    res.setHeader('Allow', ['GET']);
+    res.status(405).end(`Method ${method} Not Allowed`);
+    return;
+  }
 
-      case 'PATCH':
-        try {
-          const response = await fetch(`${backendUrl}/tracks/${trackId}`, {
-            method: 'PATCH',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(req.body),
-          });
-      
-          if (!response.ok) {
-            throw new Error(`Error updating track: ${response.status}`);
-          }
-      
-          const updatedTrack = await response.json();
-          res.status(200).json(updatedTrack);
-        } catch (error: unknown) { // Note: `error` is typed as `unknown`
-          console.error(error);
-          // Check if `error` is an instance of `Error`
-          if (error instanceof Error) {
-            res.status(500).json({ message: error.message });
-          } else {
-            // Fallback error handling for non-Error objects
-            res.status(500).json({ message: 'An unknown error occurred' });
-          }
-        }
-        break;
+  const apiUrl = `${backendApiUrl}/tracks`; // Endpoint to get all tracks
 
-    case 'DELETE':
-      // Logic to delete a specific track by trackId
-      res.status(200).json({ message: `Deleting track with ID: ${trackId}` });
-      break;
+  try {
+    const response = await fetch(apiUrl, { method: 'GET' });
+    if (!response.ok) {
+      throw new Error(`Backend responded with status: ${response.status}`);
+    }
 
-    default:
-      res.setHeader('Allow', ['GET', 'PUT', 'PATCH', 'DELETE']);
-      res.status(405).end(`Method ${method} Not Allowed`);
+    const tracks = await response.json();
+    res.status(200).json(tracks);
+  } catch (error) {
+    console.error(`Error fetching tracks:`, error);
+    res.status(500).json({ message: `Error fetching tracks` });
   }
 }
