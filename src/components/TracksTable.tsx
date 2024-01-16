@@ -21,6 +21,7 @@ const TracksTable: React.FC<TracksTableProps> = ({ tracks, onDelete, onUpdate, o
   const [albums, setAlbums] = useState<Album[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTrack, setEditingTrack] = useState<Track | null>(null);
+  const [openMenuTrackId, setOpenMenuTrackId] = useState<number | null>(null);
 
   console.log("TracksTable received tracks: ", tracks);
 
@@ -74,17 +75,12 @@ const TracksTable: React.FC<TracksTableProps> = ({ tracks, onDelete, onUpdate, o
     closeModal();
   };
 
-  const handleDelete = async (id: number, event: React.MouseEvent) => {
-    event.stopPropagation();
-    await deleteTrack(id);
-    onDelete(id);
-  };
-
   const handleDoubleClickOnRow = (track: Track, index: number) => {
-    track.filePath && onSelectTrack(track.filePath, index);
+    console.log("Double-clicked track:", track);
+    if (track.filePath) {
+      onSelectTrack(track.filePath, index);
+    }
   };
-
-  const [openMenuTrackId, setOpenMenuTrackId] = useState<number | null>(null);
 
   const toggleMenu = (id: number, event: React.MouseEvent) => {
     event.stopPropagation(); // This prevents the double-click event for playback
@@ -106,20 +102,22 @@ const TracksTable: React.FC<TracksTableProps> = ({ tracks, onDelete, onUpdate, o
         <tbody className="bg-white divide-y divide-gray-200">
           {tracks.map((track, index) => (
             <tr key={track.id} onDoubleClick={() => handleDoubleClickOnRow(track, index)}>
-            <td className="px-4 py-2">{track.name}</td>
-            <td className="px-4 py-2">{track.artist?.name ?? 'Unknown Artist'}</td>
-            <td className="px-4 py-2">{track.album?.name ?? 'No Album'}</td>
-            <td className="px-4 py-2">{track.duration}</td>
-            <td className="px-4 py-2">
+              <td className="px-4 py-2">{track.name}</td>
+              <td className="px-4 py-2">{track.artist?.name ?? 'Unknown Artist'}</td>
+              <td className="px-4 py-2">{track.album?.name ?? 'No Album'}</td>
+              <td className="px-4 py-2">{track.duration}</td>
+              <td className="px-4 py-2 relative">
                 <button onClick={(e) => toggleMenu(track.id, e)}>•••</button>
                 {openMenuTrackId === track.id && (
-                  <div className="menu">
-                    <button onClick={() => openModal(track)}>Edit Metadata</button>
-                    <button onClick={(e) => { 
-                      e.stopPropagation();
-                      handleDelete(track.id, e);
-                    }}>Delete Track</button>
-                    {/* More options can be added here */}
+                  <div className="absolute right-0 bg-white shadow-lg rounded-md z-10">
+                    <button className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" onClick={() => openModal(track)}>Edit Metadata</button>
+                    <button className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onDelete(track.id);
+                      }}>
+                      Delete Track
+                    </button>
                   </div>
                 )}
               </td>

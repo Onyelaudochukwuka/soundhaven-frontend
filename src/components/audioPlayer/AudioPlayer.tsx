@@ -1,10 +1,28 @@
 // components/AudioPlayer.tsx
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, Dispatch, SetStateAction } from 'react';
 import WaveSurfer from 'wavesurfer.js';
 import AudioControls from './AudioControls'; 
-import { AudioPlayerProps, Track } from '@/types';
+import { Track } from '@/types';
 
-const AudioPlayer: React.FC<AudioPlayerProps> = ({ currentTrackIndex, tracks, onSelectNextTrack, onSelectPrevTrack, url }) => {
+export interface AudioPlayerProps {
+  currentTrackIndex: number;
+  tracks: Track[];
+  onSelectNextTrack: () => void;
+  onSelectPrevTrack: () => void;
+  url: string;
+  triggerPlayback: boolean; // Added prop for triggering playback
+  setTriggerPlayback: Dispatch<SetStateAction<boolean>>; // Added prop for setting triggerPlayback state
+}
+
+const AudioPlayer: React.FC<AudioPlayerProps> = ({
+  currentTrackIndex,
+  tracks,
+  onSelectNextTrack,
+  onSelectPrevTrack,
+  url,
+  triggerPlayback,
+  setTriggerPlayback
+}) => {
   const waveformRef = useRef<HTMLDivElement>(null);
   const wavesurfer = useRef<WaveSurfer | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -37,6 +55,14 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ currentTrackIndex, tracks, on
       }
     };
   }, [url, playbackSpeed, volume]);
+
+  useEffect(() => {
+    // New useEffect for handling playback when triggerPlayback is true
+    if (triggerPlayback && wavesurfer.current) {
+      wavesurfer.current.play();
+      setTriggerPlayback(false); // Reset triggerPlayback after starting playback
+    }
+  }, [triggerPlayback, setTriggerPlayback]);
 
   const handlePlayPause = () => {
     if (wavesurfer.current) {

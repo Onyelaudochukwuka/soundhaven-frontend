@@ -82,14 +82,6 @@ export interface User {
     genre: Genre;
     genreId: number;
   }
-
-  export interface AudioPlayerProps {
-    currentTrackIndex: number;
-    tracks: Track[];
-    onSelectNextTrack: () => void;
-    onSelectPrevTrack: () => void;
-    url: string; 
-  }
   
   export interface AudioControlsProps {
     isPlaying: boolean;

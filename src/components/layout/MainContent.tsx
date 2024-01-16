@@ -5,7 +5,7 @@ import TracksTable from '../TracksTable';
 import ErrorMessage from '../ErrorMessage';
 import AudioPlayer from '../audioPlayer/AudioPlayer';
 import { Track } from '@/types';
-import { backendUrl } from '../../services/apiService';
+import { backendUrl, deleteTrack } from '../../services/apiService';
 import { TracksContext } from '@/contexts/TracksContext';
 
 interface MainContentProps {
@@ -19,9 +19,15 @@ const MainContent: React.FC<MainContentProps> = ({ tracks, error, loadTracks, up
   const [currentTrackIndex, setCurrentTrackIndex] = useState(0);
   const [localTracks, setLocalTracks] = useState<Track[]>(tracks);
   const [isEditing, setIsEditing] = useState(false);
+  const [triggerPlayback, setTriggerPlayback] = useState(false); // Renamed state
 
   const handleUploadSuccess = async () => {
     await loadTracks();
+  };
+
+  const handleSelectTrack = (trackFilePath: string, trackIndex: number) => {
+    setCurrentTrackIndex(trackIndex);
+    setTriggerPlayback(true); // Signal to play the selected track
   };
 
   const handleUpdateTrack = async (trackId: number, field: string, value: string) => {
@@ -39,12 +45,21 @@ const MainContent: React.FC<MainContentProps> = ({ tracks, error, loadTracks, up
         throw new Error('Failed to update the track');
       }
   
+      // Fetch only the updated track
       const updatedTrack = await response.json();
-      setLocalTracks(prevTracks => prevTracks.map(track => 
-        track.id === trackId ? { ...track, [field]: updatedTrack[field] } : track
-      ));
+  
+      // Update localTracks state with the updated track
+      setLocalTracks(prevTracks => 
+        prevTracks.map(track => 
+          track.id === trackId ? { ...track, ...updatedTrack } : track
+        )
+      );
+  
+      // Optionally, update the parent component's state if provided
       if (updateTracksState) {
-        updateTracksState(localTracks);
+        updateTracksState(localTracks.map(track => 
+          track.id === trackId ? { ...track, ...updatedTrack } : track
+        ));
       }
   
     } catch (error: unknown) {
@@ -52,8 +67,7 @@ const MainContent: React.FC<MainContentProps> = ({ tracks, error, loadTracks, up
         console.error('Error updating track:', error.message);
       }
     }  
-  };
-  
+  };  
 
   useEffect(() => {
     const handleSpacebar = (event: KeyboardEvent) => {
@@ -74,17 +88,30 @@ const MainContent: React.FC<MainContentProps> = ({ tracks, error, loadTracks, up
   }, [isEditing]);
 
   const handleDelete = async (deletedTrackId: number) => {
-    // Existing delete logic
-  };
+    try {
+      console.log("Requesting deletion of track with ID:", deletedTrackId);
+      await deleteTrack(deletedTrackId);
+      console.log(`Track with ID: ${deletedTrackId} deleted successfully.`);
+  
+      // Update localTracks state immediately
+      setLocalTracks(prevTracks => prevTracks.filter(track => track.id !== deletedTrackId));
+
+      // Optionally, refresh the tracks list from the server
+      // await loadTracks();
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        console.error('Error deleting track:', error.message);
+        if (error.message === 'Track not found') {
+          alert('The track you are trying to delete does not exist.');
+        }
+      }
+    }
+  };  
 
   // Update localTracks when tracks prop changes
   useEffect(() => {
     setLocalTracks(tracks);
   }, [tracks]);
-
-  const handleSelectTrack = (trackFilePath: string, trackIndex: number) => {
-    setCurrentTrackIndex(trackIndex);
-  };
 
   const onSelectNextTrack = () => {
     setCurrentTrackIndex((prevIndex) => (prevIndex + 1) % tracks.length);
@@ -101,7 +128,7 @@ const MainContent: React.FC<MainContentProps> = ({ tracks, error, loadTracks, up
   return (
     <main className="flex-col items-center flex-1 p-4 mx-auto">
       {error && <ErrorMessage message={error} />}
-      <h1 className="text-2xl font-bold mb-4">Welcome to SoundHaven</h1>
+      {/* <h1 className="text-2xl font-bold mb-4">Welcome to SoundHaven</h1> */}
       <div className='w-full px-8 items-center'>
         <div className="waveform-container" style={{ height: '128px', width: '100%' }}>
           {currentTrackUrl && (
@@ -111,6 +138,8 @@ const MainContent: React.FC<MainContentProps> = ({ tracks, error, loadTracks, up
               tracks={tracks}
               onSelectNextTrack={onSelectNextTrack}
               onSelectPrevTrack={onSelectPrevTrack}
+              triggerPlayback={triggerPlayback}
+              setTriggerPlayback={setTriggerPlayback}
             />
           )}
         </div>

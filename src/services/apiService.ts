@@ -7,11 +7,22 @@ export const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL as string;
 
 const handleResponse = async (response: Response) => {
   if (!response.ok) {
-    const errorData = await response.json() as { message: string };
-    throw new Error(errorData.message || 'Network response was not ok');
+    const errorData = await response.json();
+    console.error('Full error response:', errorData);
+
+    let errorMessage = errorData.message || 'Network response was not ok';
+    if (response.status === 404) {
+      errorMessage = 'Track not found';
+    } else if (response.status === 500) {
+      errorMessage = 'Internal server error';
+    }
+
+    throw new Error(errorMessage);
   }
   return response.json();
 };
+
+
 
 export const fetchTracks = async () => {
   try {
@@ -63,7 +74,11 @@ export const deleteTrack = async (id: number) => {
     });
     await handleResponse(response);
   } catch (error: any) {
-    console.error('Error deleting track:', error.message);
+    console.error(`Error deleting track with ID ${id}:`, error.message);
+    // Log additional error details if available
+    if (error instanceof Error && error.message.includes('Track not found')) {
+      console.error(`Track with ID ${id} not found.`);
+    }
     throw error;
   }
 };
