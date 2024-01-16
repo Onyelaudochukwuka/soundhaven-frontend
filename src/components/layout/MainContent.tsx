@@ -4,9 +4,10 @@ import FileUpload from '../FileUpload';
 import TracksTable from '../TracksTable';
 import ErrorMessage from '../ErrorMessage';
 import AudioPlayer from '../audioPlayer/AudioPlayer';
-import { Track } from '@/types';
-import { backendUrl, deleteTrack } from '../../services/apiService';
+import { Track, Comment } from '@/types';
+import { backendUrl, deleteTrack, addComment, deleteComment, editComment } from '../../services/apiService';
 import { TracksContext } from '@/contexts/TracksContext';
+import CommentsPanel from './CommentsPanel';
 
 interface MainContentProps {
   tracks: Track[];
@@ -19,7 +20,11 @@ const MainContent: React.FC<MainContentProps> = ({ tracks, error, loadTracks, up
   const [currentTrackIndex, setCurrentTrackIndex] = useState(0);
   const [localTracks, setLocalTracks] = useState<Track[]>(tracks);
   const [isEditing, setIsEditing] = useState(false);
-  const [triggerPlayback, setTriggerPlayback] = useState(false); // Renamed state
+  const [triggerPlayback, setTriggerPlayback] = useState(false);
+  const [showComments, setShowComments] = useState(false); // State to manage comments panel visibility
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [newCommentText, setNewCommentText] = useState('');
+
 
   const handleUploadSuccess = async () => {
     await loadTracks();
@@ -40,34 +45,34 @@ const MainContent: React.FC<MainContentProps> = ({ tracks, error, loadTracks, up
         },
         body: JSON.stringify({ [field]: value }),
       });
-  
+
       if (!response.ok) {
         throw new Error('Failed to update the track');
       }
-  
+
       // Fetch only the updated track
       const updatedTrack = await response.json();
-  
+
       // Update localTracks state with the updated track
-      setLocalTracks(prevTracks => 
-        prevTracks.map(track => 
+      setLocalTracks(prevTracks =>
+        prevTracks.map(track =>
           track.id === trackId ? { ...track, ...updatedTrack } : track
         )
       );
-  
+
       // Optionally, update the parent component's state if provided
       if (updateTracksState) {
-        updateTracksState(localTracks.map(track => 
+        updateTracksState(localTracks.map(track =>
           track.id === trackId ? { ...track, ...updatedTrack } : track
         ));
       }
-  
+
     } catch (error: unknown) {
       if (error instanceof Error) {
         console.error('Error updating track:', error.message);
       }
-    }  
-  };  
+    }
+  };
 
   useEffect(() => {
     const handleSpacebar = (event: KeyboardEvent) => {
@@ -79,9 +84,9 @@ const MainContent: React.FC<MainContentProps> = ({ tracks, error, loadTracks, up
         console.log('Spacebar disabled due to editing');
       }
     };
-  
+
     window.addEventListener('keydown', handleSpacebar);
-  
+
     return () => {
       window.removeEventListener('keydown', handleSpacebar);
     };
@@ -92,7 +97,7 @@ const MainContent: React.FC<MainContentProps> = ({ tracks, error, loadTracks, up
       console.log("Requesting deletion of track with ID:", deletedTrackId);
       await deleteTrack(deletedTrackId);
       console.log(`Track with ID: ${deletedTrackId} deleted successfully.`);
-  
+
       // Update localTracks state immediately
       setLocalTracks(prevTracks => prevTracks.filter(track => track.id !== deletedTrackId));
 
@@ -106,7 +111,7 @@ const MainContent: React.FC<MainContentProps> = ({ tracks, error, loadTracks, up
         }
       }
     }
-  };  
+  };
 
   // Update localTracks when tracks prop changes
   useEffect(() => {
@@ -124,6 +129,43 @@ const MainContent: React.FC<MainContentProps> = ({ tracks, error, loadTracks, up
   const currentTrackUrl = tracks[currentTrackIndex]?.filePath
     ? `${process.env.NEXT_PUBLIC_BACKEND_URL}/${tracks[currentTrackIndex]?.filePath}`
     : '';
+
+  // Comments 
+  const toggleComments = () => {
+    setShowComments(!showComments);
+  };
+
+  // Function to add a new comment
+  const handleAddComment = async () => {
+    const userId = user?.id; // Assuming you have the user's ID in the context
+
+    try {
+      const trackId = getTrackId();
+      const newCommentText = getCommentText(); 
+
+      if (userId && trackId && newCommentText) {
+        // Send a POST request to your backend to add a comment
+        const response = await fetch('http://your-backend-url.com/comments', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${user.token}` // Use the token from your context
+          },
+          body: JSON.stringify({ trackId, userId, text: newCommentText }),
+        });
+
+        if (!response.ok) throw new Error('Failed to post comment');
+
+        // Optionally, update your state or UI with the new comment
+        const newComment = await response.json();
+        // Assuming you have a state or method to update the comments
+        // setComments([...comments, newComment]);
+      }
+    } catch (error) {
+      console.error('Error in adding comment:', error);
+      // Handle errors, such as displaying an error message
+    }
+  };
 
   return (
     <main className="flex-col items-center flex-1 p-4 mx-auto">

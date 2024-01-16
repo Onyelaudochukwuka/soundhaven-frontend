@@ -46,7 +46,7 @@ export const uploadTrack = async (formData: FormData) => {
 
   try {
     console.log("Sending upload request to server");
-    const response = await fetch(`${backendUrl}/tracks/upload`, { 
+    const response = await fetch(`${backendUrl}/tracks/upload`, {
       method: 'POST',
       body: formData,
     });
@@ -92,7 +92,7 @@ export const updateTrackMetadata = async (trackId: number, updatedData: Partial<
     },
     body: JSON.stringify(updatedData),
   });
-  
+
   if (!response.ok) {
     const errorData = await response.json();
     throw new Error(errorData.message || 'Error updating track');
@@ -128,4 +128,52 @@ export const createAlbum = async (albumData: Partial<Album>): Promise<Album> => 
     body: JSON.stringify(albumData),
   });
   return handleResponse(response);
+};
+
+// Comment functionality
+export const addComment = async (trackId: number, userId: number, text: string) => {
+  try {
+    const response = await fetch(`${backendUrl}/comments`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ trackId, userId, text }),
+    });
+    return handleResponse(response);
+  } catch (error: unknown) {
+    if (error instanceof Error) {
+      console.error('Error adding comment:', error.message);
+    }
+    throw error;
+  }
+};
+
+export const editComment = async (commentId: number, text: string) => {
+  try {
+    const response = await fetch(`${backendUrl}/comments/${commentId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text }),
+    });
+    return handleResponse(response);
+  } catch (error: unknown) {
+    if (error instanceof Error) {
+      console.error('Error editing comment:', error.message);
+    }
+    throw error;
+  }
+};
+
+export const deleteComment = async (commentId: number) => {
+  try {
+    const response = await fetch(`${backendUrl}/comments/${commentId}`, {
+      method: 'DELETE',
+    });
+    return handleResponse(response);
+  } catch (error: unknown) {
+    if
+      (error instanceof Error) {
+      console.error('Error deleting comment:', error.message);
+    }
+    throw error;
+  }
 };

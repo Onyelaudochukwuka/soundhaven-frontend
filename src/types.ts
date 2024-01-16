@@ -3,7 +3,7 @@
 export interface User {
     id: number;
     email: string;
-    password: string;
+    // password: string;
     name?: string;
     createdAt: string;
     updatedAt: string;
@@ -101,3 +101,13 @@ export interface User {
   export type TrackUpdatePayload = {
     [P in keyof Track]?: string;
   };
+
+  export interface Comment {
+    id: number;
+    text: string;
+    trackId: number;
+    userId: number;
+    user: User; // Assuming each comment is linked to a User
+    createdAt: string;
+    updatedAt?: string;
+  }
