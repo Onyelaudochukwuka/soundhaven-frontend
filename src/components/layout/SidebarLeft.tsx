@@ -1,7 +1,7 @@
 // components/Header.jsx
 const Header = () => {
     return (
-      <header className="text-center p-4">
+      <header className="text-center">
         {/* Navigation, Search Bar, User Profile */}
       </header>
     );

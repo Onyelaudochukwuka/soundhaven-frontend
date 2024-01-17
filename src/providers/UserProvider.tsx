@@ -1,51 +1,54 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+// UserProvider.tsx
+import React, { useState, ReactNode } from 'react';
+import { UserContext } from '@/contexts/UserContext';
 import { User } from '@/types';
-
-// Define a type for the user context state
-interface UserContextState {
-  user: User | null; // Allowing user to be null
-  login: (username: string, password: string) => Promise<void>;
-  logout: () => void;
-}
-
-// Initialize the context with a default value
-const UserContext = createContext<UserContextState>({
-  user: null, // This is now valid as user can be User | null
-  login: async () => {},
-  logout: () => {}
-});
 
 interface UserProviderProps {
   children: ReactNode;
 }
 
 export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null); // Corrected type for useState
+  const [user, setUser] = useState<User | null>(null);
 
   const login = async (username: string, password: string) => {
     try {
-      const response = await fetch('http://your-backend-url.com/auth/login', {
+      const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password }),
       });
   
-      if (response.ok) {
-        const data = await response.json();
-        sessionStorage.setItem('token', data.token);
-        setUser(data.user); // Set user data here
-      } else {
-        throw new Error('Failed to login');
+      if (!response.ok) {
+        throw new Error('Login failed');
       }
+  
+      const data = await response.json();
+      // Assuming the response contains a user object and a token
+      sessionStorage.setItem('token', data.token); // Save the token for future requests
+      setUser(data.user); // Update the user state
     } catch (error) {
       console.error('Login error:', error);
+      // Handle login error (e.g., show a notification to the user)
     }
   };
-  
-  const logout = () => {
-    sessionStorage.removeItem('token');
-    setUser(null);
+
+  const logout = async () => {
+    try {
+      await fetch('/api/auth/logout', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${sessionStorage.getItem('token')}`,
+        },
+      });
+    } catch (error) {
+      console.error('Logout error:', error);
+      // Optionally handle logout error
+    }
+    sessionStorage.removeItem('token'); // Clear the stored token
+    setUser(null); // Clear the user state
   };
+  
 
   return (
     <UserContext.Provider value={{ user, login, logout }}>
@@ -53,5 +56,3 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
     </UserContext.Provider>
   );
 };
-
-export const useUser = () => useContext(UserContext);

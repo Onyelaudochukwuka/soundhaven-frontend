@@ -22,8 +22,62 @@ const handleResponse = async (response: Response) => {
   return response.json();
 };
 
+// Auth functionality
+export const login = async (email: string, password: string) => {
+  try {
+    const response = await fetch(`${backendUrl}/auth/login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email, password }),
+    });
+    return await handleResponse(response);
+  } catch (error: any) {
+    console.error('Error during login:', error.message);
+    throw error;
+  }
+};
 
+export const logout = async () => {
+  const token = getToken();
+  try {
+    const response = await fetch(`${backendUrl}/auth/logout`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`, // Include the JWT token here
+      },
+    });
+    return await handleResponse(response);
+  } catch (error: any) {
+    console.error('Error during logout:', error.message);
+    throw error;
+  }
+};
 
+export const deleteAccount = async (userId: number) => {
+  const token = getToken();
+  try {
+    const response = await fetch(`${backendUrl}/users/${userId}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`, // Include the JWT token here
+      },
+    });
+    return await handleResponse(response);
+  } catch (error: any) {
+    console.error(`Error deleting account for user ID ${userId}:`, error.message);
+    throw error;
+  }
+};
+
+const getToken = () => {
+  // Retrieve the JWT token from localStorage
+  const token = localStorage.getItem('token');
+  return token || '';  // Return the token, or an empty string if it's not found
+};
+
+// Track functionality
 export const fetchTracks = async () => {
   try {
     const response = await fetch(`${backendUrl}/tracks`);
@@ -83,6 +137,7 @@ export const deleteTrack = async (id: number) => {
   }
 };
 
+// Metadata functionality
 export const updateTrackMetadata = async (trackId: number, updatedData: Partial<Track>) => {
   const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL as string;
   const response = await fetch(`${backendUrl}/tracks/${trackId}`, {
@@ -102,6 +157,7 @@ export const updateTrackMetadata = async (trackId: number, updatedData: Partial<
 };
 
 
+// Artists and albums functionality
 export const fetchArtists = async (): Promise<Artist[]> => {
   const response = await fetch(`${backendUrl}/artists`);
   return handleResponse(response);

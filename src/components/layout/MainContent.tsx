@@ -170,7 +170,6 @@ const MainContent: React.FC<MainContentProps> = ({ tracks, error, loadTracks, up
   return (
     <main className="flex-col items-center flex-1 p-4 mx-auto">
       {error && <ErrorMessage message={error} />}
-      {/* <h1 className="text-2xl font-bold mb-4">Welcome to SoundHaven</h1> */}
       <div className='w-full px-8 items-center'>
         <div className="waveform-container" style={{ height: '128px', width: '100%' }}>
           {currentTrackUrl && (

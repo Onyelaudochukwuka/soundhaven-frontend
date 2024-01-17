@@ -17,6 +17,10 @@
     "isolatedModules": true,
     "jsx": "preserve",
     "incremental": true,
+    "strictNullChecks": true,
+    "noImplicitAny": true, 
+    "noImplicitReturns": true,
+    "strictFunctionTypes": true,
     "paths": {
       "@/*": [
         "./src/*"
