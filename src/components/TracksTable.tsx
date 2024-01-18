@@ -5,7 +5,7 @@ import { Track, Artist, Album } from '@/types';
 import { deleteTrack, fetchArtists, fetchAlbums } from '../services/apiService';
 import Modal from './Modal'; // Import your modal component
 import EditTrackForm from './EditTrackForm';
-import { serializeValue } from '@/utils';
+import { serializeValue } from '@/utils/utils';
 
 interface TracksTableProps {
   tracks: Track[];

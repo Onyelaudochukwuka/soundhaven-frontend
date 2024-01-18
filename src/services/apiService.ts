@@ -8,28 +8,39 @@ export const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL as string;
 const handleResponse = async (response: Response) => {
   if (!response.ok) {
     const errorData = await response.json();
-    console.error('Full error response:', errorData);
+    console.error('Error response:', {
+      status: response.status,
+      statusText: response.statusText,
+      errorData,
+    });
 
     let errorMessage = errorData.message || 'Network response was not ok';
-    if (response.status === 404) {
-      errorMessage = 'Track not found';
-    } else if (response.status === 500) {
-      errorMessage = 'Internal server error';
-    }
-
     throw new Error(errorMessage);
   }
   return response.json();
 };
 
 // Auth functionality
+export const register = async (name: string, email: string, password: string) => {
+  try {
+    const response = await fetch(`${backendUrl}/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, email, password }),
+    });
+    return await handleResponse(response);
+  } catch (error: any) {
+    console.error('Error during registration:', error.message);
+    throw error;
+  }
+};
+
+
 export const login = async (email: string, password: string) => {
   try {
-    const response = await fetch(`${backendUrl}/auth/login`, {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/auth/login`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password }),
     });
     return await handleResponse(response);

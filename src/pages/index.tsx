@@ -1,4 +1,3 @@
-// pages/HomePage.jsx
 import React, { useEffect, useState } from 'react';
 import Head from 'next/head';
 import Header from '../components/layout/SidebarLeft';
@@ -16,17 +15,17 @@ const HomePage: React.FC = () => {
   const [tracks, setTracks] = useState<Track[]>([]);
   const [error, setError] = useState('');
   const { user } = useUser();
-  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalContent, setModalContent] = useState<React.ReactNode>(null);
 
-  // Function to toggle the login modal
-  const toggleLoginModal = () => {
-    console.log("Toggling modal, current state:", isLoginModalOpen);
-    setIsLoginModalOpen(!isLoginModalOpen);
+  // Function to open the modal with specific content
+  const openModalWithContent = (content: React.ReactNode) => {
+    setModalContent(content);
+    setIsModalOpen(true);
   };
 
-  const toggleRegisterModal = () => {
-    setModalContent(<RegisterForm />);
-    setIsLoginModalOpen(!isLoginModalOpen);
+  const toggleModal = () => {
+    setIsModalOpen(!isModalOpen);
   };
 
   const loadTracks = async () => {
@@ -34,11 +33,7 @@ const HomePage: React.FC = () => {
       const fetchedTracks = await fetchTracks();
       setTracks(fetchedTracks);
     } catch (error) {
-      if (error instanceof Error) {
-        setError(error.message);
-      } else {
-        setError("An unexpected error occurred");
-      }
+      setError(error instanceof Error ? error.message : "An unexpected error occurred");
     }
   };
 
@@ -48,10 +43,12 @@ const HomePage: React.FC = () => {
 
   return (
     <div className='flex-col'>
-      <NavBar onLoginClick={toggleLoginModal} onRegisterClick={toggleRegisterModal}>
+      <NavBar 
+        onLoginClick={() => openModalWithContent(<LoginForm />)} 
+        onRegisterClick={() => openModalWithContent(<RegisterForm />)}
+      >
         <div>Welcome to SoundHaven! Log in to start your own library, comment on tracks, and create playlists.</div>
       </NavBar>
-
 
       <div className="flex min-h-screen font-dyslexic">
         <Head>
@@ -60,15 +57,15 @@ const HomePage: React.FC = () => {
         </Head>
 
         <Header />
-        <div className="bg-red-500 p-4 text-white min-w-32">Anon's Library</div>
-
+        <div className="bg-red-500 p-4 text-white min-w-32">Anon&apos;s Library</div>
         <MainContent tracks={tracks} error={error} loadTracks={loadTracks} />
       </div>
-      <Modal isOpen={isLoginModalOpen} onClose={toggleLoginModal}>
-        <LoginForm />
-      </Modal>
-      <Footer />
 
+      <Modal isOpen={isModalOpen} onClose={toggleModal}>
+        {modalContent}
+      </Modal>
+
+      <Footer />
     </div>
   );
 };

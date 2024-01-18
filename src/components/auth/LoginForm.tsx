@@ -3,30 +3,33 @@ import { useForm, SubmitHandler, FormProvider } from 'react-hook-form';
 import { FaGoogle } from 'react-icons/fa';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
+import { useAuth } from '@/contexts/AuthContext';
+import { login as loginService } from '@/services/apiService';
 
 interface LoginData {
-  username: string;
+  email: string;
   password: string;
 }
 
 const LoginForm: React.FC = () => {
+  const { login } = useAuth();
   const formMethods = useForm<LoginData>();
   const { register, handleSubmit, formState } = formMethods;
   const { errors } = formState;
   const [showPassword, setShowPassword] = useState(false);
   const [loginSuccess, setLoginSuccess] = useState(false);
   const router = useRouter();
+  const { login: contextLogin } = useAuth();
+  const [error, setError] = useState('');
 
   const onSubmit: SubmitHandler<LoginData> = async (data) => {
-    // Implement your login logic here
-    console.log('Manual login with:', data);
-
-    // Simulate login success for demonstration
-    setLoginSuccess(true);
-    setTimeout(() => {
-      console.log('Login successful!');
+    try {
+      const { user, token } = await loginService(data.email, data.password);
+      contextLogin(user, token);
       router.push('/posts');
-    }, 1000);
+    } catch (err) {
+      setError('Failed to login. Please check your credentials.'); // Update the error message
+    }
   };
 
   const handleGoogleLogin = async () => {
@@ -43,7 +46,7 @@ const LoginForm: React.FC = () => {
         {loginSuccess && <div className="text-green-500 mb-4">Login successful!</div>}
         <form onSubmit={handleSubmit(onSubmit)} className="text-center w-3/4">
           <input
-            {...register('username', { required: true })}
+            {...register('email', { required: true })}
             type="text"
             placeholder="Username"
             className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline mb-4"

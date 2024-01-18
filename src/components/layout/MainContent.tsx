@@ -1,5 +1,7 @@
 // components/MainContent.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
+import { UserContext } from '@/contexts/UserContext';
+import { useUser } from '@/contexts/UserContext';
 import FileUpload from '../FileUpload';
 import TracksTable from '../TracksTable';
 import ErrorMessage from '../ErrorMessage';
@@ -24,15 +26,18 @@ const MainContent: React.FC<MainContentProps> = ({ tracks, error, loadTracks, up
   const [showComments, setShowComments] = useState(false); // State to manage comments panel visibility
   const [comments, setComments] = useState<Comment[]>([]);
   const [newCommentText, setNewCommentText] = useState('');
-
+  const [selectedTrackId, setSelectedTrackId] = useState<number | null>(null);
+  const userContext = useUser();
+  const user = userContext ? userContext.user : null;
 
   const handleUploadSuccess = async () => {
     await loadTracks();
   };
 
-  const handleSelectTrack = (trackFilePath: string, trackIndex: number) => {
+  const handleSelectTrack = (trackId: number, trackFilePath: string, trackIndex: number) => {
     setCurrentTrackIndex(trackIndex);
-    setTriggerPlayback(true); // Signal to play the selected track
+    setTriggerPlayback(true);
+    setSelectedTrackId(trackId);
   };
 
   const handleUpdateTrack = async (trackId: number, field: string, value: string) => {
@@ -138,11 +143,11 @@ const MainContent: React.FC<MainContentProps> = ({ tracks, error, loadTracks, up
   // Function to add a new comment
   const handleAddComment = async () => {
     const userId = user?.id; // Assuming you have the user's ID in the context
-
+  
     try {
-      const trackId = getTrackId();
-      const newCommentText = getCommentText(); 
-
+      // Assuming you want to add a comment for the currently selected track
+      const trackId = selectedTrackId;
+  
       if (userId && trackId && newCommentText) {
         // Send a POST request to your backend to add a comment
         const response = await fetch('http://your-backend-url.com/comments', {
@@ -153,9 +158,9 @@ const MainContent: React.FC<MainContentProps> = ({ tracks, error, loadTracks, up
           },
           body: JSON.stringify({ trackId, userId, text: newCommentText }),
         });
-
+  
         if (!response.ok) throw new Error('Failed to post comment');
-
+  
         // Optionally, update your state or UI with the new comment
         const newComment = await response.json();
         // Assuming you have a state or method to update the comments
@@ -169,6 +174,9 @@ const MainContent: React.FC<MainContentProps> = ({ tracks, error, loadTracks, up
 
   return (
     <main className="flex-col items-center flex-1 p-4 mx-auto">
+      <button onClick={() => toggleComments(null)} className="toggle-comments-btn">
+        {showComments ? 'Close Comments' : 'Open Comments'}
+      </button>
       {error && <ErrorMessage message={error} />}
       <div className='w-full px-8 items-center'>
         <div className="waveform-container" style={{ height: '128px', width: '100%' }}>
@@ -192,6 +200,8 @@ const MainContent: React.FC<MainContentProps> = ({ tracks, error, loadTracks, up
         onSelectTrack={handleSelectTrack}
         onUpdate={handleUpdateTrack}
       />
+      <CommentsPanel trackId={selectedTrackId ?? 0} show={showComments} onClose={() => toggleComments(null)} />
+
     </main>
   );
 };
