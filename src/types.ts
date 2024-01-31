@@ -102,12 +102,44 @@ export interface User {
     [P in keyof Track]?: string;
   };
 
-  export interface Comment {
+  export type Comment = {
     id: number;
-    text: string;
+    userName: string; 
+    content: string;
     trackId: number;
-    userId: number;
-    user: User; // Assuming each comment is linked to a User
-    createdAt: string;
-    updatedAt?: string;
+    userId?: number; // userId is optional
+    createdAt: Date;
+    marker?: Marker; // marker is optional and should be of type Marker
+    replies?: Comment[]; // Optional array of reply comments
+    replyToId?: number; // Optional ID of the comment being replied to
+    replyTo?: Comment; // Optional Comment being replied to
+  };
+  
+  export type Marker = {
+    id: number;
+    time: number; // Time in seconds
+    commentId?: number; // commentId is optional
+    comment?: Comment; // Optional Comment associated with the marker
+    trackId: number; // ID of the associated track
+    createdAt: Date;
+  };
+  
+  export type ErrorResponse = {
+    message: string;
+    errors?: { [key: string]: string[] };
+  };
+
+  export interface ApiError<T = unknown> extends Error {
+    response?: {
+      status?: number;
+      statusText?: string;
+      json?: () => Promise<T>;
+    };
+  }
+
+  export interface DecodedToken {
+    userId: number; // Custom property for user ID
+    sub?: string;   // Subject - standard JWT property, often used for user ID
+    exp?: number;   // Expiration time
+    iat?: number;   // Issued at time
   }

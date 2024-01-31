@@ -1,7 +1,6 @@
-// components/layout/NavBar.jsx
-import React, { ReactNode } from 'react';
+import React, { ReactNode, useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { useUser } from '@/contexts/UserContext';
+import { useAuth } from '@/hooks/UseAuth';
 import { FaBars } from 'react-icons/fa';
 
 interface NavBarProps {
@@ -11,32 +10,57 @@ interface NavBarProps {
 }
 
 const NavBar: React.FC<NavBarProps> = ({ children, onLoginClick, onRegisterClick }) => {
-  const { user, logout } = useUser();
+  const { user, logout } = useAuth();
+  const [showDropdown, setShowDropdown] = useState(false);
+  const dropdownRef = useRef(null);
+
+  // This useEffect is for debugging purposes to see when the user state updates
+  useEffect(() => {
+    console.log("Current User in NavBar:", user);
+  }, [user]);
+
+  const toggleDropdown = () => setShowDropdown(!showDropdown);
+
+  const handleClickOutside = (event) => {
+    if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+      setShowDropdown(false);
+    }
+  };
+
+  useEffect(() => {
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  const handleLogout = () => {
+    logout();
+    setShowDropdown(false); // Close dropdown on logout
+  };
 
   return (
     <div className="flex justify-between items-center p-4 bg-gray-100">
       {children}
 
       {user ? (
-        // Show hamburger menu for logged-in users
         <div className="flex items-center">
-          <FaBars className="text-xl cursor-pointer" />
-          {/* Dropdown menu */}
-          <div className="dropdown-menu hidden">
+          <FaBars className="text-xl cursor-pointer" onClick={toggleDropdown} />
+          <div className={`dropdown-menu ${showDropdown ? 'block' : 'hidden'}`} ref={dropdownRef}>
             <Link href="/settings">
-              <a className="dropdown-item">Settings</a>
+              <span className="dropdown-item cursor-pointer" onClick={() => setShowDropdown(false)}>Settings</span>
             </Link>
-            <button onClick={logout} className="dropdown-item">Logout</button>
+            <button onClick={handleLogout} className="dropdown-item">Logout</button>
           </div>
         </div>
       ) : (
         <div>
           <button onClick={onLoginClick} className="text-blue-500 hover:text-blue-600">
-            log in
+            Log in
           </button>
           <span className="mx-2">/</span>
           <button onClick={onRegisterClick} className="text-blue-500 hover:text-blue-600">
-            register
+            Register
           </button>
         </div>
       )}

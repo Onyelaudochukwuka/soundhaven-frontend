@@ -1,131 +1,146 @@
-// components/AudioPlayer.tsx
-import React, { useEffect, useRef, useState, Dispatch, SetStateAction } from 'react';
+import React, { useRef, useState, useEffect, useContext } from 'react';
 import WaveSurfer from 'wavesurfer.js';
-import AudioControls from './AudioControls'; 
 import { Track } from '@/types';
+import debounce from 'lodash/debounce';
+import AudioControls from './AudioControls';
+import ErrorMessage from '../ErrorMessage';
+import { PlaybackContext } from '@/contexts/PlaybackContext';
 
-export interface AudioPlayerProps {
-  currentTrackIndex: number;
-  tracks: Track[];
-  onSelectNextTrack: () => void;
-  onSelectPrevTrack: () => void;
-  url: string;
-  triggerPlayback: boolean; // Added prop for triggering playback
-  setTriggerPlayback: Dispatch<SetStateAction<boolean>>; // Added prop for setting triggerPlayback state
+interface AudioPlayerProps {
+  track: Track;
+  isFavorite: boolean;
+  onToggleFavorite: () => void;
+  playbackSpeed: number;
+  onPlaybackSpeedChange: (speed: number) => void;
+  volume: number;
+  onVolumeChange: (speed: number) => void;
+  onTogglePlay: () => void;
 }
 
-const AudioPlayer: React.FC<AudioPlayerProps> = ({
-  currentTrackIndex,
-  tracks,
-  onSelectNextTrack,
-  onSelectPrevTrack,
-  url,
-  triggerPlayback,
-  setTriggerPlayback
-}) => {
-  const waveformRef = useRef<HTMLDivElement>(null);
-  const wavesurfer = useRef<WaveSurfer | null>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [playbackSpeed, setPlaybackSpeed] = useState(1);
-  const [isFavorite, setIsFavorite] = useState(false);
-  const [volume, setVolume] = useState(100); // Assuming volume range is 0-100
+const AudioPlayer: React.FC<AudioPlayerProps> = ({ track, isFavorite, onToggleFavorite, playbackSpeed, onPlaybackSpeedChange, volume, onVolumeChange, onTogglePlay }) => {
+  const { isPlaying, togglePlayback } = useContext(PlaybackContext);
+  const waveformRef = useRef<HTMLDivElement | null>(null);
+  const wavesurferRef = useRef<WaveSurfer | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Debounce play/pause actions to prevent rapid state changes
+  const debouncedPlayPause = debounce((play: boolean) => {
+    console.log(`debouncedPlayPause called, play: ${play}, isLoading: ${isLoading}`);
+    const wavesurfer = wavesurferRef.current;
+    if (wavesurfer && !isLoading) {
+      console.log(`WaveSurfer action: ${isPlaying ? 'play' : 'pause'}`);
+      play ? wavesurfer.play() : wavesurfer.pause();
+    }
+  }, 100, { 'leading': true, 'trailing': false });
 
   useEffect(() => {
-    if (waveformRef.current) {
-      wavesurfer.current = WaveSurfer.create({
-        container: waveformRef.current,
-        waveColor: 'violet',
-        progressColor: 'purple'
-      });
-
-      wavesurfer.current.load(url);
-
-      wavesurfer.current.on('play', () => setIsPlaying(true));
-      wavesurfer.current.on('pause', () => setIsPlaying(false));
-
-      wavesurfer.current.on('ready', () => {
-        wavesurfer.current?.setPlaybackRate(playbackSpeed);
-        wavesurfer.current?.setVolume(volume / 100);
-      });
+    if (!track || !waveformRef.current || !track.filePath) {
+      console.error('Waveform container not found or track file path is missing');
+      setError('The track file path is missing.');
+      return;
     }
+
+    setIsLoading(true);
+    const ws = WaveSurfer.create({
+      container: waveformRef.current,
+      waveColor: 'rgb(200, 0, 200)',
+      progressColor: 'rgb(100, 0, 100)',
+    });
+
+    ws.load(`${process.env.NEXT_PUBLIC_BACKEND_URL}/${track.filePath}`);
+    ws.on('ready', () => {
+      setIsLoading(false);
+      if (isPlaying) {
+        ws.play();
+      }
+    });
+
+    ws.on('error', (wsError) => {
+      console.error('WaveSurfer error:', wsError);
+      setError(`WaveSurfer error: ${wsError}`);
+    });
+
+    wavesurferRef.current = ws;
 
     return () => {
-      if (wavesurfer.current) {
-        wavesurfer.current.destroy();
-      }
+      ws.destroy();
     };
-  }, [url, playbackSpeed, volume]);
+  }, [track]);
 
   useEffect(() => {
-    // New useEffect for handling playback when triggerPlayback is true
-    if (triggerPlayback && wavesurfer.current) {
-      wavesurfer.current.play();
-      setTriggerPlayback(false); // Reset triggerPlayback after starting playback
+    const wavesurfer = wavesurferRef.current;
+    if (wavesurfer && !isLoading) {
+      isPlaying ? wavesurfer.play() : wavesurfer.pause();
     }
-  }, [triggerPlayback, setTriggerPlayback]);
+  }, [isPlaying, isLoading]);
+
+  useEffect(() => {
+    console.log(`Debounce effect called, isPlaying: ${isPlaying}, isLoading: ${isLoading}`);
+    debouncedPlayPause(isPlaying);
+    // Adding a cleanup function to cancel the debounce if the component unmounts
+    return () => {
+      debouncedPlayPause.cancel();
+    };
+  }, [isPlaying]);
 
   const handlePlayPause = () => {
-    if (wavesurfer.current) {
-      wavesurfer.current.playPause();
-    }
+    onTogglePlay();
   };
 
-  const onSkipForward = () => {
-    if (wavesurfer.current) {
-      let currentTime = wavesurfer.current.getCurrentTime();
-      wavesurfer.current.seekTo((currentTime + 10) / wavesurfer.current.getDuration());
-    }
+  const handleSkipForward = () => {
+    // Implement skipping forward
   };
 
-  const onSkipBackward = () => {
-    if (wavesurfer.current) {
-      let currentTime = wavesurfer.current.getCurrentTime();
-      wavesurfer.current.seekTo(Math.max(0, currentTime - 10) / wavesurfer.current.getDuration());
-    }
+  const handleSkipBackward = () => {
+    // Implement skipping backward
   };
 
-  // Implementation for onPlayNext and onPlayPrevious
-  const onPlayNext = () => {
-    onSelectNextTrack(); // Call the provided function to select the next track
+  const handlePlayNext = () => {
+    // Implement playing next track
   };
 
-  const onPlayPrevious = () => {
-    onSelectPrevTrack(); // Call the provided function to select the previous track
+  const handlePlayPrevious = () => {
+    // Implement playing previous track
   };
 
-  const onPlaybackSpeedChange = (speed: number) => {
-    setPlaybackSpeed(speed);
-    if (wavesurfer.current) {
-      wavesurfer.current.setPlaybackRate(speed);
-    }
+  const handlePlaybackSpeedChange = (newSpeed: number) => {
+    setPlaybackSpeed(newSpeed);
+    wavesurferRef.current?.setPlaybackRate(newSpeed);
   };
 
-  const onToggleFavorite = () => setIsFavorite(!isFavorite);
+  const handleToggleFavorite = () => {
+    setIsFavorite(!isFavorite);
+  };
 
-  const onVolumeChange = (newVolume: number) => {
+  const handleVolumeChange = (newVolume: number) => {
     setVolume(newVolume);
-    if (wavesurfer.current) {
-      wavesurfer.current.setVolume(newVolume / 100);
-    }
+    wavesurferRef.current?.setVolume(newVolume);
   };
 
   return (
     <div>
-      <div ref={waveformRef} />
-      <AudioControls
-        isPlaying={isPlaying}
-        onPlayPause={handlePlayPause}
-        onSkipForward={onSkipForward}
-        onSkipBackward={onSkipBackward}
-        onPlayNext={onPlayNext}
-        onPlayPrevious={onPlayPrevious}
-        onPlaybackSpeedChange={onPlaybackSpeedChange}
-        onToggleFavorite={onToggleFavorite}
-        onVolumeChange={onVolumeChange}
-        isFavorite={isFavorite}
-        playbackSpeed={playbackSpeed}
-        volume={volume}
-      />
+      {track && (
+        <div>
+          <div ref={waveformRef} style={{ height: '128px', width: '100%' }} />
+          <AudioControls
+            isPlaying={isPlaying}
+            onPlayPause={togglePlayback}
+            onSkipForward={handleSkipForward}
+            onSkipBackward={handleSkipBackward}
+            onPlayNext={handlePlayNext}
+            onPlayPrevious={handlePlayPrevious}
+            onPlaybackSpeedChange={handlePlaybackSpeedChange}
+            onToggleFavorite={handleToggleFavorite}
+            onVolumeChange={handleVolumeChange}
+            isFavorite={isFavorite}
+            playbackSpeed={playbackSpeed}
+            volume={volume}
+            onTogglePlay={togglePlayback}
+          />
+        </div>
+
+      )}
     </div>
   );
 };

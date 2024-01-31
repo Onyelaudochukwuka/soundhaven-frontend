@@ -1,6 +1,5 @@
 import React, { useState, useContext } from 'react';
 import { useForm, SubmitHandler } from 'react-hook-form';
-import { useRouter } from 'next/router';
 import { FaGoogle } from 'react-icons/fa';
 import { AuthContext } from '@/contexts/AuthContext';
 import { register as registerUser } from '@/services/apiService';
@@ -11,13 +10,10 @@ interface RegisterData {
   password: string;
   confirmPassword: string;
 }
-
-const RegisterForm: React.FC = () => {
-  const { register, handleSubmit, formState: { errors }, getValues } = useForm<RegisterData>();
-  const router = useRouter();
+const RegisterForm: React.FC<{ onSuccess: () => void, onCloseModal: () => void }> = ({ onSuccess, onCloseModal }) => {
+  const { register: formRegister, handleSubmit, formState: { errors }, getValues } = useForm<RegisterData>();
   const authContext = useContext(AuthContext);
-  const [registerError, setRegisterError] = useState('');
-  const [registrationSuccess, setRegistrationSuccess] = useState(false); // New state for success
+  const [registerError, setRegisterError] = useState<string>('');
 
   const onSubmit: SubmitHandler<RegisterData> = async (data) => {
     if (data.password !== data.confirmPassword) {
@@ -31,14 +27,28 @@ const RegisterForm: React.FC = () => {
     }
   
     try {
-      const result = await registerUser(data.name, data.email, data.password);
-      authContext.login(result.user, result.accessToken);
-      setRegistrationSuccess(true);
+      // Convert email to lowercase for consistency
+      const emailLowercase = data.email.toLowerCase();
   
-      setTimeout(() => {
-        router.push('/'); // Redirect after showing success message
-      }, 2000); // 2 seconds delay for better user experience
-    } catch (error: unknown) {
+      const payload = {
+        email: emailLowercase,
+        password: data.password,
+        ...(data.name && { name: data.name })
+      };
+  
+      console.log("Registration Payload:", payload);
+  
+      await registerUser(payload);
+      console.log("User registered, attempting to log in");
+  
+      if (authContext.login) {
+        console.log("Logging in with credentials");
+        await authContext.login(emailLowercase, data.password); // Use lowercase email for login
+      }
+  
+      console.log("Login process completed, calling onSuccess");
+      onSuccess();
+    } catch (error) {
       if (error instanceof Error) {
         setRegisterError(error.message || 'Registration failed. Please try again.');
       } else {
@@ -47,64 +57,58 @@ const RegisterForm: React.FC = () => {
     }
   };
   
-
   const handleGoogleRegister = () => {
-    // Implement your Google registration logic here.
-    // This typically involves redirecting to a Google OAuth URL or using a library like Firebase.
+    // Implement Google registration logic here
     console.log('Register with Google - Implementation required');
   };
 
   return (
     <div>
       {registerError && <div className="error">{registerError}</div>}
-      {registrationSuccess && <div className="success">Registration successful! Redirecting...</div>}
+      <form onSubmit={handleSubmit(onSubmit)} className="text-center w-3/4">
+        <input
+          {...formRegister('name', { required: 'Name is required' })}
+          type="text"
+          placeholder="Name"
+          className="input-field"
+        />
+        {errors.name && <span className="error-message">{errors.name.message}</span>}
 
-      {!registrationSuccess && (
-        <form onSubmit={handleSubmit(onSubmit)} className="text-center w-3/4">
-          <input
-            {...register('name', { required: 'Name is required' })}
-            type="text"
-            placeholder="Name"
-            className="input-field"
-          />
-          {errors.name && <span className="error-message">{errors.name.message}</span>}
+        <input
+          {...formRegister('email', { required: 'Email is required' })}
+          type="email"
+          placeholder="Email"
+          className="input-field"
+        />
+        {errors.email && <span className="error-message">{errors.email.message}</span>}
 
-          <input
-            {...register('email', { required: 'Email is required' })}
-            type="email"
-            placeholder="Email"
-            className="input-field"
-          />
-          {errors.email && <span className="error-message">{errors.email.message}</span>}
+        <input
+          {...formRegister('password', {
+            required: 'Password is required',
+            minLength: {
+              value: 8,
+              message: 'Password must be at least 8 characters long'
+            },
+          })}
+          type="password"
+          placeholder="Password"
+          className="input-field"
+        />
+        {errors.password && <span className="error-message">{errors.password.message}</span>}
 
-          <input
-            {...register('password', {
-              required: 'Password is required',
-              minLength: {
-                value: 8,
-                message: 'Password must be at least 8 characters long'
-              },
-            })}
-            type="password"
-            placeholder="Password"
-            className="input-field"
-          />
-          {errors.password && <span className="error-message">{errors.password.message}</span>}
+        <input
+          {...formRegister('confirmPassword', {
+            required: 'Please confirm your password',
+            validate: value => value === getValues('password') || "Passwords don't match",
+          })}
+          type="password"
+          placeholder="Confirm Password"
+          className="input-field"
+        />
+        {errors.confirmPassword && <span className="error-message">{errors.confirmPassword.message}</span>}
 
-          <input
-            {...register('confirmPassword', {
-              required: 'Please confirm your password',
-              validate: value => value === getValues('password') || "Passwords don't match",
-            })}
-            type="password"
-            placeholder="Confirm Password"
-            className="input-field"
-          />
-          {errors.confirmPassword && <span className="error-message">{errors.confirmPassword.message}</span>}
-
-          <button type="submit" className="submit-button">Sign Up</button>
-        </form>
-      )}
+        <button type="submit" className="submit-button">Sign Up</button>
+      </form>
       <p className="text-center my-8 text-gray-700">
         <b>Or register with:</b>
       </p>

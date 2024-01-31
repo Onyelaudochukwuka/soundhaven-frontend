@@ -5,28 +5,25 @@ import MainContent from '../components/layout/MainContent';
 import Footer from '../components/layout/Footer';
 import { fetchTracks } from '../services/apiService';
 import { Track } from '@/types';
-import { useUser } from '@/contexts/UserContext';
+import { useAuth } from '@/hooks/UseAuth';
 import LoginForm from '@/components/auth/LoginForm';
 import RegisterForm from '@/components/auth/RegisterForm';
 import Modal from '@/components/Modal';
 import NavBar from '@/components/layout/NavBar';
+import { useRouter } from 'next/router';
 
 const HomePage: React.FC = () => {
   const [tracks, setTracks] = useState<Track[]>([]);
   const [error, setError] = useState('');
-  const { user } = useUser();
+  const { user } = useAuth();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalContent, setModalContent] = useState<React.ReactNode>(null);
+  const [registrationSuccess, setRegistrationSuccess] = useState(false);
+  const router = useRouter();
 
-  // Function to open the modal with specific content
-  const openModalWithContent = (content: React.ReactNode) => {
-    setModalContent(content);
-    setIsModalOpen(true);
-  };
-
-  const toggleModal = () => {
-    setIsModalOpen(!isModalOpen);
-  };
+  useEffect(() => {
+    console.log("User in HomePage:", user);
+  }, [user]);
 
   const loadTracks = async () => {
     try {
@@ -41,13 +38,49 @@ const HomePage: React.FC = () => {
     loadTracks();
   }, []);
 
+  const handleRegistrationSuccess = () => {
+    setRegistrationSuccess(true);
+    setTimeout(() => {
+      setRegistrationSuccess(false);
+      setIsModalOpen(false); // Close modal
+      router.push('/'); // Redirect after successful registration
+    }, 2000);
+  };
+
+  const openModalWithContent = (content: React.ReactNode) => {
+    setModalContent(content);
+    setIsModalOpen(true);
+  };
+
+  const toggleModal = () => {
+    setIsModalOpen(!isModalOpen);
+  };
+
+  const openRegistrationModal = () => {
+    openModalWithContent(
+      <RegisterForm onSuccess={handleRegistrationSuccess} onCloseModal={toggleModal} />
+    );
+  };
+
+  const openLoginModal = () => {
+    openModalWithContent(<LoginForm />);
+  };
+
+  const navBarContent = user ? (
+    <div>SoundsHaven</div>
+  ) : (
+    <div>Welcome to SoundHaven! Log in to start your own library, comment on tracks, and create playlists.</div>
+  );
+
   return (
     <div className='flex-col'>
-      <NavBar 
-        onLoginClick={() => openModalWithContent(<LoginForm />)} 
-        onRegisterClick={() => openModalWithContent(<RegisterForm />)}
+      <NavBar
+        onLoginClick={() => openModalWithContent(
+          <LoginForm onCloseModal={toggleModal} />
+        )}
+        onRegisterClick={openRegistrationModal}
       >
-        <div>Welcome to SoundHaven! Log in to start your own library, comment on tracks, and create playlists.</div>
+        {navBarContent}
       </NavBar>
 
       <div className="flex min-h-screen font-dyslexic">

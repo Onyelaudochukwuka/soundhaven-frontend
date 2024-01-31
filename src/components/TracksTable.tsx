@@ -1,21 +1,30 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
+import { TracksContext } from '@/contexts/TracksContext';
+import { PlaybackContext } from '@/contexts/PlaybackContext';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faPlay } from '@fortawesome/free-solid-svg-icons';
-import { Track, Artist, Album } from '@/types';
+import { Track, Artist, Album, Comment, User } from '@/types';
 import { deleteTrack, fetchArtists, fetchAlbums } from '../services/apiService';
 import Modal from './Modal'; // Import your modal component
 import EditTrackForm from './EditTrackForm';
 import { serializeValue } from '@/utils/utils';
 
 interface TracksTableProps {
-  tracks: Track[];
   onDelete: (id: number) => void;
   onUpdate: (id: number, field: string, value: string) => void;
-  onSelectTrack: (trackFilePath: string, trackIndex: number) => void;
+  onSelectTrack: (trackId: number, trackFilePath: string, trackIndex: number) => void;
 }
 
-const TracksTable: React.FC<TracksTableProps> = ({ tracks, onDelete, onUpdate, onSelectTrack }) => {
-  console.log("Received tracks:", tracks);
+const TracksTable: React.FC<TracksTableProps> = ({ onDelete, onUpdate, onSelectTrack }) => {
+  const { tracks } = useContext(TracksContext);
+  const { selectTrack } = useContext(PlaybackContext);
+
+  if (!tracks) {
+    console.error('TracksContext not found');
+    return null; // or some error component
+  }
+  
+  console.log("TracksTable received tracks: ", tracks);
 
   const [artists, setArtists] = useState<Artist[]>([]);
   const [albums, setAlbums] = useState<Album[]>([]);
@@ -46,6 +55,14 @@ const TracksTable: React.FC<TracksTableProps> = ({ tracks, onDelete, onUpdate, o
     };
   }, []);
 
+  useEffect(() => {
+    tracks.forEach(track => {
+      if (!track.filePath) {
+        console.error(`Track ID ${track.id} is missing a file path`);
+      }
+    });
+  }, [tracks]);
+
   const openModal = (track: Track) => {
     setEditingTrack(track);
     setIsModalOpen(true);
@@ -58,27 +75,28 @@ const TracksTable: React.FC<TracksTableProps> = ({ tracks, onDelete, onUpdate, o
 
   const handleSave = (updatedTrackData: Partial<Track>) => {
     if (!editingTrack) return;
-
+  
     (Object.keys(updatedTrackData) as Array<keyof Track>).forEach(field => {
-      // Ensure the current field exists on editingTrack before comparing
-      if (editingTrack.hasOwnProperty(field)) {
+      // Check if the field exists in editingTrack using a safer approach
+      if (Object.prototype.hasOwnProperty.call(editingTrack, field)) {
         const oldValue = editingTrack[field];
         const newValue = updatedTrackData[field];
-
+  
         if (oldValue !== newValue) {
           const valueToUpdate: string = serializeValue(newValue);
           onUpdate(editingTrack.id, field, valueToUpdate);
         }
       }
     });
-
+  
     closeModal();
   };
+
 
   const handleDoubleClickOnRow = (track: Track, index: number) => {
     console.log("Double-clicked track:", track);
     if (track.filePath) {
-      onSelectTrack(track.filePath, index);
+      selectTrack(track, index); // Using selectTrack directly from PlaybackContext
     }
   };
 
@@ -114,7 +132,7 @@ const TracksTable: React.FC<TracksTableProps> = ({ tracks, onDelete, onUpdate, o
                     <button className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                       onClick={(e) => {
                         e.stopPropagation();
-                        onDelete(track.id);
+                        onDelete(track.id); 
                       }}>
                       Delete Track
                     </button>

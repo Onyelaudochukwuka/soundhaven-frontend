@@ -1,27 +1,46 @@
-import { Track, Album, Artist } from '@/types';
+import { Track, Album, Artist, User, ErrorResponse } from '@/types'; // Import necessary types
 
 if (!process.env.NEXT_PUBLIC_BACKEND_URL) {
   throw new Error("Backend URL is not defined in .env.local");
 }
-export const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL as string;
+export const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
 
-const handleResponse = async (response: Response) => {
+export const handleResponse = async <T = any>(response: Response): Promise<T> => {
   if (!response.ok) {
-    const errorData = await response.json();
-    console.error('Error response:', {
-      status: response.status,
-      statusText: response.statusText,
-      errorData,
-    });
+    const clonedResponse = response.clone();
+    try {
+      let errorData: ErrorResponse;
+      const contentType = response.headers.get('content-type');
 
-    let errorMessage = errorData.message || 'Network response was not ok';
-    throw new Error(errorMessage);
+      if (contentType?.includes('application/json')) {
+        errorData = await response.json();
+        // Handle validation errors specifically if status is 400
+        if (response.status === 400 && errorData.errors) {
+          const validationErrors = Object.values(errorData.errors).join(', ');
+          throw new Error(`Validation error: ${validationErrors}`);
+        }
+      } else {
+        errorData = { message: await clonedResponse.text() };
+      }
+
+      console.error('Error response:', {
+        status: response.status,
+        statusText: response.statusText,
+        errorData,
+      });
+
+      const errorMessage = errorData.message || 'Unknown error occurred';
+      throw new Error(`Error ${response.status}: ${errorMessage}`);
+    } catch (error) {
+      console.error('Error parsing response:', error);
+      throw new Error(`Error parsing server response: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   }
-  return response.json();
+  return response.json() as Promise<T>;
 };
 
-// Auth functionality
-export const register = async (name: string, email: string, password: string) => {
+export const register = async (data: { name?: string; email: string; password: string }) => {
+  const { name, email, password } = data;
   try {
     const response = await fetch(`${backendUrl}/auth/register`, {
       method: 'POST',
@@ -29,34 +48,100 @@ export const register = async (name: string, email: string, password: string) =>
       body: JSON.stringify({ name, email, password }),
     });
     return await handleResponse(response);
-  } catch (error: any) {
-    console.error('Error during registration:', error.message);
+  } catch (error) {
+    if (error instanceof Error) {
+      console.error('Error during registration:', error.message);
+    } else {
+      console.error('Unknown error occurred during registration');
+    }
+    throw error;
+  }
+};
+
+
+export const getToken = () => {
+  // Retrieve the JWT token from localStorage
+  const token = localStorage.getItem('token');
+  return token || '';  // Return the token, or an empty string if it's not found
+};
+
+export const validateToken = async () => {
+  const token = localStorage.getItem('token');
+  console.log("Validating token from localStorage:", token);
+
+  if (!token) {
+    throw new Error('No token found in localStorage');
+  }
+
+  try {
+    const response = await fetch(`${backendUrl}/auth/validateToken`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ token }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Token validation failed with status: ${response.status}`);
+    }
+
+    const jsonResponse = await response.json();
+    console.log("Response from validateToken:", jsonResponse);
+
+    return jsonResponse;
+  } catch (error) {
+    console.error('Error validating token:', error);
     throw error;
   }
 };
 
 
 export const login = async (email: string, password: string) => {
+  console.log("Login request data:", { email, password });
+
   try {
-    const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/auth/login`, {
+    const response = await fetch(`${backendUrl}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password }),
     });
-    return await handleResponse(response);
-  } catch (error: any) {
-    console.error('Error during login:', error.message);
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      const errorMessage = errorData.message || 'Login failed';
+      console.error('Login error:', errorMessage);
+      throw new Error(`Error ${response.status}: ${errorMessage}`);
+    }
+
+    const data = await response.json();
+    console.log("Login response data:", data);
+
+    if (!data || !data.access_token) {
+      console.error('Invalid response structure:', data);
+      throw new Error('Login response does not include token');
+    }
+
+    localStorage.setItem('token', data.access_token);
+    console.log('Token stored:', localStorage.getItem('token'));
+
+    return data; // Return the entire data object for further inspection
+  } catch (error) {
+    console.error('Error during login:', error);
     throw error;
   }
 };
 
+
+
 export const logout = async () => {
-  const token = getToken();
+  const refreshToken = localStorage.getItem('refreshToken'); // Retrieve the refresh token
   try {
     const response = await fetch(`${backendUrl}/auth/logout`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${token}`, // Include the JWT token here
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${refreshToken}`, // Use the refresh token
       },
     });
     return await handleResponse(response);
@@ -82,20 +167,29 @@ export const deleteAccount = async (userId: number) => {
   }
 };
 
-const getToken = () => {
-  // Retrieve the JWT token from localStorage
-  const token = localStorage.getItem('token');
-  return token || '';  // Return the token, or an empty string if it's not found
-};
-
-// Track functionality
-export const fetchTracks = async () => {
+export const fetchTracks = async (): Promise<Track[]> => {
   try {
     const response = await fetch(`${backendUrl}/tracks`);
-    return await handleResponse(response);
-  } catch (error: any) { // Type assertion for error
-    console.error('Error fetching tracks:', error.message);
-    throw error;
+
+    // Log the response status and status text
+    console.log(`Response status: ${response.status}, status text: ${response.statusText}`);
+
+    // Handle the response and parse it as JSON
+    const tracks = await handleResponse<Track[]>(response);
+
+    // Log the fetched tracks
+    console.log('Tracks fetched:', tracks);
+
+    return tracks;
+  } catch (error) {
+    // Log the error with more details
+    console.error('Error fetching tracks:', error);
+
+    if (error instanceof Error) {
+      throw new Error(`Fetching tracks failed: ${error.message}`);
+    } else {
+      throw new Error('Unknown error occurred while fetching tracks');
+    }
   }
 };
 
@@ -105,7 +199,7 @@ export const uploadTrack = async (formData: FormData) => {
   // Log the contents of formData for debugging
   // Convert formData keys to an array and log them
   const formDataKeys = Array.from(formData.keys());
-  for (let key of formDataKeys) {
+  for (const key of formDataKeys) {
     console.log(key, formData.get(key));
   }
 
@@ -138,11 +232,11 @@ export const deleteTrack = async (id: number) => {
       method: 'DELETE',
     });
     await handleResponse(response);
-  } catch (error: any) {
-    console.error(`Error deleting track with ID ${id}:`, error.message);
-    // Log additional error details if available
-    if (error instanceof Error && error.message.includes('Track not found')) {
-      console.error(`Track with ID ${id} not found.`);
+  } catch (error: unknown) {
+    if (error instanceof Error) {
+      console.error(`Error deleting track with ID ${id}:`, error.message);
+    } else {
+      console.error('Unknown error occurred:', error);
     }
     throw error;
   }
@@ -195,52 +289,4 @@ export const createAlbum = async (albumData: Partial<Album>): Promise<Album> => 
     body: JSON.stringify(albumData),
   });
   return handleResponse(response);
-};
-
-// Comment functionality
-export const addComment = async (trackId: number, userId: number, text: string) => {
-  try {
-    const response = await fetch(`${backendUrl}/comments`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ trackId, userId, text }),
-    });
-    return handleResponse(response);
-  } catch (error: unknown) {
-    if (error instanceof Error) {
-      console.error('Error adding comment:', error.message);
-    }
-    throw error;
-  }
-};
-
-export const editComment = async (commentId: number, text: string) => {
-  try {
-    const response = await fetch(`${backendUrl}/comments/${commentId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text }),
-    });
-    return handleResponse(response);
-  } catch (error: unknown) {
-    if (error instanceof Error) {
-      console.error('Error editing comment:', error.message);
-    }
-    throw error;
-  }
-};
-
-export const deleteComment = async (commentId: number) => {
-  try {
-    const response = await fetch(`${backendUrl}/comments/${commentId}`, {
-      method: 'DELETE',
-    });
-    return handleResponse(response);
-  } catch (error: unknown) {
-    if
-      (error instanceof Error) {
-      console.error('Error deleting comment:', error.message);
-    }
-    throw error;
-  }
 };
