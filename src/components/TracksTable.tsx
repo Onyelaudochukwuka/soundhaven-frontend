@@ -17,7 +17,7 @@ interface TracksTableProps {
 
 const TracksTable: React.FC<TracksTableProps> = ({ onDelete, onUpdate, onSelectTrack }) => {
   const { tracks } = useContext(TracksContext);
-  const { selectTrack } = useContext(PlaybackContext);
+  const { currentTrack } = useContext(PlaybackContext);
 
   if (!tracks) {
     console.error('TracksContext not found');
@@ -96,9 +96,11 @@ const TracksTable: React.FC<TracksTableProps> = ({ onDelete, onUpdate, onSelectT
   const handleDoubleClickOnRow = (track: Track, index: number) => {
     console.log("Double-clicked track:", track);
     if (track.filePath) {
-      selectTrack(track, index); // Using selectTrack directly from PlaybackContext
+      onSelectTrack(track.id, track.filePath, index); // Fixed to use `onSelectTrack` and checked `track.filePath`
+    } else {
+      console.error("Track file path is undefined");
     }
-  };
+  };  
 
   const toggleMenu = (id: number, event: React.MouseEvent) => {
     event.stopPropagation(); // This prevents the double-click event for playback
@@ -119,8 +121,10 @@ const TracksTable: React.FC<TracksTableProps> = ({ onDelete, onUpdate, onSelectT
         </thead>
         <tbody className="bg-white divide-y divide-gray-200">
           {tracks.map((track, index) => (
-            <tr key={track.id} onDoubleClick={() => handleDoubleClickOnRow(track, index)}>
-              <td className="px-4 py-2">{track.name}</td>
+            <tr key={track.id} 
+            onDoubleClick={() => onSelectTrack(track.id, track.filePath, index)}
+            className={`hover:bg-gray-100 ${currentTrack && track.id === currentTrack.id ? 'bg-blue-100' : ''}`} // Highlight the row if it's the current track
+        >              <td className="px-4 py-2">{track.name}</td>
               <td className="px-4 py-2">{track.artist?.name ?? 'Unknown Artist'}</td>
               <td className="px-4 py-2">{track.album?.name ?? 'No Album'}</td>
               <td className="px-4 py-2">{track.duration}</td>
