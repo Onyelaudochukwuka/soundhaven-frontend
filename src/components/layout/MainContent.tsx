@@ -103,13 +103,13 @@ const MainContent: React.FC<MainContentProps> = ({ error, loadTracks }) => {
     };
 
     return (
-      <main className="flex-col items-center flex-1 p-4 mx-auto">
-        <button onClick={toggleComments} className="toggle-comments-btn">
+      <main className="flex flex-col p-4 mx-auto">
+      <button onClick={toggleComments} className="toggle-comments-btn absolute">
           {showComments ? 'Close Comments' : 'Open Comments'}
         </button>
         {error && <ErrorMessage message={error} />}
         <div className='w-full px-8 items-center'>
-          <div className="waveform-container" style={{ height: '128px', width: '100%' }}>
+        <div className="audio-player-container w-full max-w-3xl mx-auto">
               <AudioPlayer
                 track={currentTrack}
                 isPlaying={isPlaying}

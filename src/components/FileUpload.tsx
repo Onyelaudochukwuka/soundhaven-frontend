@@ -43,7 +43,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ onUploadSuccess }) => {
 
 
     return (
-        <div className='p-4 mt-8 bg-gray-100 rounded-lg'>
+        <div className='p-4 mt-4 bg-gray-100 rounded-lg'>
             <div style={{ display: 'inline-block', overflow: 'hidden', whiteSpace: 'nowrap' }}>
                 <input type="file" onChange={handleFileSelect} disabled={uploading} style={{ width: '100%', opacity: 0, position: 'absolute', cursor: 'pointer' }} />
                 <label htmlFor="fileInput" style={{ cursor: 'pointer' }}>

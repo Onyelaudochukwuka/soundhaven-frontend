@@ -5,6 +5,7 @@ import debounce from 'lodash/debounce';
 import AudioControls from './AudioControls';
 import ErrorMessage from '../ErrorMessage';
 import { PlaybackContext } from '@/contexts/PlaybackContext';
+import TrackInfo from './TrackInfo';
 
 interface AudioPlayerProps {
   track: Track;
@@ -122,6 +123,8 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ track, isFavorite, onToggleFa
     <div>
       {track && (
         <div>
+                    <TrackInfo track={track} />
+
           <div ref={waveformRef} style={{ height: '128px', width: '100%' }} />
           <AudioControls
             isPlaying={isPlaying}
