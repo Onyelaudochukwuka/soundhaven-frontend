@@ -1,5 +1,5 @@
 import { createContext } from 'react';
-import { Track } from '@/types';
+import { Track } from '../../types/types';
 
 // Define the interface for your context state
 interface TracksContextType {

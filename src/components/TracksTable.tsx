@@ -3,7 +3,7 @@ import { TracksContext } from '@/contexts/TracksContext';
 import { PlaybackContext } from '@/contexts/PlaybackContext';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faPlay } from '@fortawesome/free-solid-svg-icons';
-import { Track, Artist, Album, Comment, User } from '@/types';
+import { Track, Artist, Album, Comment, User } from '../../types/types';
 import { deleteTrack, fetchArtists, fetchAlbums } from '../services/apiService';
 import Modal from './Modal'; // Import your modal component
 import EditTrackForm from './EditTrackForm';

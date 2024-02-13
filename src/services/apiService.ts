@@ -1,4 +1,4 @@
-import { Track, Album, Artist, User, ErrorResponse } from '@/types'; // Import necessary types
+import { Track, Album, Artist, User, ErrorResponse } from '../../types/types'; // Import necessary types
 
 if (!process.env.NEXT_PUBLIC_BACKEND_URL) {
   throw new Error("Backend URL is not defined in .env.local");
@@ -289,4 +289,52 @@ export const createAlbum = async (albumData: Partial<Album>): Promise<Album> => 
     body: JSON.stringify(albumData),
   });
   return handleResponse(response);
+};
+
+// In apiService.js or wherever you manage your API calls
+
+export const createMarker = async (markerData) => {
+  try {
+    const response = await fetch(`${backendUrl}/markers`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${getToken()}`, // Assuming you're using JWT for auth
+      },
+      body: JSON.stringify(markerData),
+    });
+    return await handleResponse(response);
+  } catch (error) {
+    console.error('Error creating marker:', error);
+    throw error;
+  }
+};
+
+export const fetchMarkersByTrackId = async (trackId) => {
+  try {
+    const response = await fetch(`${backendUrl}/markers?trackId=${trackId}`, {
+      headers: {
+        'Authorization': `Bearer ${getToken()}`,
+      },
+    });
+    return await handleResponse(response);
+  } catch (error) {
+    console.error('Error fetching markers:', error);
+    throw error;
+  }
+};
+
+export const deleteMarker = async (markerId) => {
+  try {
+    const response = await fetch(`${backendUrl}/markers/${markerId}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${getToken()}`,
+      },
+    });
+    return await handleResponse(response);
+  } catch (error) {
+    console.error('Error deleting marker:', error);
+    throw error;
+  }
 };

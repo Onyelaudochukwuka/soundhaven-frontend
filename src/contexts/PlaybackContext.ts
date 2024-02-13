@@ -1,5 +1,5 @@
 import { createContext, useContext } from 'react';
-import { Track } from '@/types';
+import { Track } from '../../types/types';
 
 interface PlaybackContextValue {
     isPlaying: boolean;

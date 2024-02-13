@@ -1,5 +1,5 @@
 import React, { useState, ReactElement } from 'react';
-import { Track } from '@/types';
+import { Track } from '../../types/types';
 import { TracksContext } from '@/contexts/TracksContext';
 
 export const TracksProvider: React.FC<{ children: React.ReactNode }> = ({ children }): ReactElement | null => {

@@ -1,7 +1,7 @@
 // src/contexts/AuthProvider.tsx
 import React, { useState, ReactNode, FC, useEffect } from 'react';
 import { AuthContext } from '@/contexts/AuthContext';
-import { User } from '@/types';
+import { User } from '../../types/types';
 import * as apiService from '@/services/apiService'; // Import the apiService
 
 interface AuthProviderProps {

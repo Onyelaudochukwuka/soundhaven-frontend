@@ -1,4 +1,4 @@
-import { Comment } from "@/types";
+import { Comment } from "../../../types/types";
 import { backendUrl } from "@/services/apiService";
 import { handleResponse } from "@/services/apiService";
 

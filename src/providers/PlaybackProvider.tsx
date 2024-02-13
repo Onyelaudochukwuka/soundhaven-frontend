@@ -1,6 +1,6 @@
 import React, { useState, FC } from 'react';
 import { PlaybackContext } from '@/contexts/PlaybackContext';
-import { Track } from '@/types';
+import { Track } from '../../types/types';
 
 interface PlaybackProviderProps {
     children: React.ReactNode;

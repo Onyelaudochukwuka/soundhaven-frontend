@@ -4,7 +4,7 @@ import Header from '../components/layout/SidebarLeft';
 import MainContent from '../components/layout/MainContent';
 import Footer from '../components/layout/Footer';
 import { fetchTracks } from '../services/apiService';
-import { Track } from '@/types';
+import { Track } from '../../types/types';
 import { useAuth } from '@/hooks/UseAuth';
 import LoginForm from '@/components/auth/LoginForm';
 import RegisterForm from '@/components/auth/RegisterForm';

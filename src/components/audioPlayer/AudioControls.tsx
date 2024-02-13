@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { AudioControlsProps } from '@/types'; 
+import { AudioControlsProps } from '../../../types/types'; 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faPlay, faPause, faForward, faBackward, faStepForward, faStepBackward, faHeart } from '@fortawesome/free-solid-svg-icons';
 

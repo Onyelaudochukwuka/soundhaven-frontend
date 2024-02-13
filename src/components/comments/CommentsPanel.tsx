@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useContext } from 'react';
 // import Image from 'next/image';
 import InfiniteScroll from 'react-infinite-scroll-component';
-import { Comment } from '@/types';
+import { Comment } from '../../../types/types';
 import { fetchComments, addComment } from './commentsAPI';
 import { PlaybackContext } from '@/contexts/PlaybackContext';
 import { useAuth } from '@/contexts/AuthContext';

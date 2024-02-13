@@ -9,6 +9,10 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@chakra-ui/icons": "^2.1.1",
+    "@chakra-ui/react": "^2.8.2",
+    "@emotion/react": "^11.11.3",
+    "@emotion/styled": "^11.11.0",
     "@fortawesome/fontawesome-svg-core": "^6.5.1",
     "@fortawesome/free-solid-svg-icons": "^6.5.1",
     "@fortawesome/react-fontawesome": "^0.2.0",
@@ -25,7 +29,8 @@
     "react-icons": "^5.0.1",
     "react-infinite-scroll-component": "^6.1.0",
     "react-router-dom": "^6.21.2",
-    "wavesurfer.js": "^7.5.4"
+    "wavesurfer-react": "^3.0.1",
+    "wavesurfer.js": "^7.7.2"
   },
   "devDependencies": {
     "@types/lodash": "^4.14.202",

@@ -1,11 +1,13 @@
 import React, { useRef, useState, useEffect, useContext } from 'react';
 import WaveSurfer from 'wavesurfer.js';
-import { Track } from '@/types';
+import RegionsPlugin from 'wavesurfer.js/dist/plugins/regions.js';
+import { Region, RegionParams, } from 'wavesurfer.js/dist/plugins/regions.js';
+import { Track } from '../../../types/types';
 import debounce from 'lodash/debounce';
 import AudioControls from './AudioControls';
-import ErrorMessage from '../ErrorMessage';
 import { PlaybackContext } from '@/contexts/PlaybackContext';
 import TrackInfo from './TrackInfo';
+import Modal from '../Modal';
 
 interface AudioPlayerProps {
   track: Track;
@@ -18,72 +20,108 @@ interface AudioPlayerProps {
   onTogglePlay: () => void;
 }
 
+
 const AudioPlayer: React.FC<AudioPlayerProps> = ({ track, isFavorite, onToggleFavorite, playbackSpeed, onPlaybackSpeedChange, volume, onVolumeChange, onTogglePlay }) => {
   const { isPlaying, togglePlayback } = useContext(PlaybackContext);
-  const waveformRef = useRef<HTMLDivElement | null>(null);
-  const wavesurferRef = useRef<WaveSurfer | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [comment, setComment] = useState('');
+  const [regionParams, setRegionParams] = useState(null);
 
-  // Debounce play/pause actions to prevent rapid state changes
-  const debouncedPlayPause = debounce((play: boolean) => {
-    console.log(`debouncedPlayPause called, play: ${play}, isLoading: ${isLoading}`);
-    const wavesurfer = wavesurferRef.current;
-    if (wavesurfer && !isLoading) {
-      console.log(`WaveSurfer action: ${isPlaying ? 'play' : 'pause'}`);
-      play ? wavesurfer.play() : wavesurfer.pause();
-    }
-  }, 100, { 'leading': true, 'trailing': false });
+  const regionsRef = useRef(null); // Added to store the registered Regions instance
+  const waveformRef = useRef(null);
+  const waveSurferRef = useRef<WaveSurfer | null>(null);
 
   useEffect(() => {
-    if (!track || !waveformRef.current || !track.filePath) {
-      console.error('Waveform container not found or track file path is missing');
-      setError('The track file path is missing.');
-      return;
-    }
+    if (waveformRef.current) {
+      waveSurferRef.current = WaveSurfer.create({
+        container: waveformRef.current,
+        waveColor: 'violet',
+        progressColor: 'purple',
+        backend: 'WebAudio'
+      });
 
-    setIsLoading(true);
-    const ws = WaveSurfer.create({
-      container: waveformRef.current,
-      waveColor: 'rgb(200, 0, 200)',
-      progressColor: 'rgb(100, 0, 100)',
-    });
+    console.log("Wavesurfer instance created:", waveSurferRef.current);
 
-    ws.load(`${process.env.NEXT_PUBLIC_BACKEND_URL}/${track.filePath}`);
-    ws.on('ready', () => {
+    waveSurferRef.current.load(`${process.env.NEXT_PUBLIC_BACKEND_URL}/${track.filePath}`);
+
+    waveSurferRef.current.on('ready', () => {
+      console.log('WaveSurfer is ready. Duration:', waveSurferRef.current.getDuration());
       setIsLoading(false);
       if (isPlaying) {
-        ws.play();
+        waveSurferRef.current.play();
       }
+
+      // Register and store the Regions plugin instance
+      regionsRef.current = waveSurferRef.current.registerPlugin(
+          RegionsPlugin.create()
+          );
+  });
+
+    waveSurferRef.current.on('error', (error) => {
+      console.error('WaveSurfer error:', error);
     });
 
-    ws.on('error', (wsError) => {
-      console.error('WaveSurfer error:', wsError);
-      setError(`WaveSurfer error: ${wsError}`);
-    });
+    const handleDoubleClick = (e) => {
+      if (regionsRef.current) {
+        const clickPositionX = e.clientX - waveformRef.current.getBoundingClientRect().left;
+        const clickTime = waveSurferRef.current.getDuration() * clickPositionX / waveformRef.current.offsetWidth;
+        regionsRef.current.addRegion({
+          start: clickTime, // Add a marker at the clicked time
+          end: clickTime, // Zero-length region for a marker
+          color: 'rgba(255, 165, 0, 0.5)' // Optional: customize marker color
+        });
+      }
+    };
 
-    wavesurferRef.current = ws;
+    waveformRef.current.addEventListener('dblclick', handleDoubleClick);
 
     return () => {
-      ws.destroy();
+      waveSurferRef.current.destroy();
+      if (regionsRef.current) {
+        regionsRef.current.destroy(); // Destroy the Regions plugin instance too
+      }
     };
-  }, [track]);
 
+  }
+}, [track.filePath]);
+
+
+
+  // When the comment is submitted, add the region with the comment
+  // handleCommentSubmit now correctly recognizes addRegion
+  const handleCommentSubmit = (submittedComment: string) => {
+    if (regionParams && waveSurferRef.current) {
+      waveSurferRef.current.addRegion({
+        ...regionParams,
+        data: { comment: submittedComment },
+      });
+      setModalOpen(false);
+    }
+  };
+
+  // Handle play/pause when isPlaying changes or component mounts
   useEffect(() => {
-    const wavesurfer = wavesurferRef.current;
+    // Log the current state to debug
+    console.log(`Is playing: ${isPlaying}, Is loading: ${isLoading}`);
+    
+    const wavesurfer = waveSurferRef.current;
     if (wavesurfer && !isLoading) {
-      isPlaying ? wavesurfer.play() : wavesurfer.pause();
+      try {
+        if (isPlaying) {
+          console.log('Playing audio');
+          wavesurfer.play();
+        } else {
+          console.log('Pausing audio');
+          wavesurfer.pause();
+        }
+      } catch (error) {
+        console.error('Error with play/pause:', error);
+        setError(`Playback error: ${error}`);
+      }
     }
   }, [isPlaying, isLoading]);
-
-  useEffect(() => {
-    console.log(`Debounce effect called, isPlaying: ${isPlaying}, isLoading: ${isLoading}`);
-    debouncedPlayPause(isPlaying);
-    // Adding a cleanup function to cancel the debounce if the component unmounts
-    return () => {
-      debouncedPlayPause.cancel();
-    };
-  }, [isPlaying]);
 
   const handlePlayPause = () => {
     onTogglePlay();
@@ -123,7 +161,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ track, isFavorite, onToggleFa
     <div>
       {track && (
         <div>
-                    <TrackInfo track={track} />
+          <TrackInfo track={track} />
 
           <div ref={waveformRef} style={{ height: '128px', width: '100%' }} />
           <AudioControls
@@ -143,6 +181,20 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ track, isFavorite, onToggleFa
           />
         </div>
 
+      )}
+      {modalOpen && (
+        <Modal
+          isOpen={modalOpen}
+          onClose={() => setModalOpen(false)}
+        >
+          <form onSubmit={(e) => {
+            e.preventDefault();
+            handleCommentSubmit(e.target.comment.value); // Assuming your modal form has an input with name="comment"
+          }}>
+            <input name="comment" type="text" placeholder="Enter comment" />
+            <button type="submit">Submit</button>
+          </form>
+        </Modal>
       )}
     </div>
   );

@@ -1,7 +1,7 @@
 // pages/api/comments.ts
 
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { Comment } from '@/types';
+import { Comment } from '../../../types/types';
 
 type ErrorResponse = {
   message: string;
