@@ -2,8 +2,9 @@ import React, { useState } from 'react';
 import { useForm, SubmitHandler } from 'react-hook-form';
 import { FaGoogle } from 'react-icons/fa';
 import Link from 'next/link';
+import { useAuth } from '@/hooks/UseAuth';
 import { useRouter } from 'next/router';
-import { login as loginService, validateToken } from '@/services/apiService';
+import { login as loginService } from '@/services/apiService';
 
 interface LoginData {
   email: string;
@@ -12,34 +13,15 @@ interface LoginData {
 
 const LoginForm: React.FC<{ onCloseModal: () => void }> = ({ onCloseModal }) => {
   const { register, handleSubmit, formState: { errors } } = useForm<LoginData>();
-  const router = useRouter();
+  const { login } = useAuth(); // Destructure login function from useAuth
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
   const onSubmit: SubmitHandler<LoginData> = async (data) => {
     try {
-      const loginResponse = await loginService(data.email.toLowerCase(), data.password);
-      console.log("Login response:", loginResponse);
-  
-      const accessToken = loginResponse?.access_token;
-      if (!accessToken) {
-        throw new Error('Access token not received from login response');
-      }
-  
-      localStorage.setItem('token', accessToken);
-      console.log("Token stored:", accessToken);
-  
-      try {
-        const validationResponse = await validateToken();
-        console.log("Token validation response:", validationResponse);
-  
-        // Close modal if any, then reload the page
-        onCloseModal();
-        window.location.reload();
-      } catch (validateError) {
-        console.error('Token validation error:', validateError);
-        setError('Invalid token. Please try again.');
-      }
+      const loginResponse = await login(data.email.toLowerCase(), data.password);
+      console.log("Login successful", loginResponse);
+      onCloseModal(); // Close the modal directly after login
     } catch (err) {
       console.error('Login error:', err);
       setError(err.message || 'Failed to login. Please check your credentials.');

@@ -47,13 +47,17 @@ const HomePage: React.FC = () => {
     }, 2000);
   };
 
+  const toggleModal = () => setIsModalOpen(!isModalOpen);
+
+  // Simplify the modal handling to directly close after login
+  const closeModal = () => {
+    setIsModalOpen(false);
+    console.log("Closing modal directly.");
+  };
+
   const openModalWithContent = (content: React.ReactNode) => {
     setModalContent(content);
     setIsModalOpen(true);
-  };
-
-  const toggleModal = () => {
-    setIsModalOpen(!isModalOpen);
   };
 
   const openRegistrationModal = () => {
@@ -62,12 +66,15 @@ const HomePage: React.FC = () => {
     );
   };
 
+  // Updated to use the direct close function after successful login
   const openLoginModal = () => {
-    openModalWithContent(<LoginForm />);
+    openModalWithContent(
+      <LoginForm onCloseModal={closeModal} />
+    );
   };
 
   const navBarContent = user ? (
-    <div>SoundsHaven</div>
+    <div>SoundHaven</div>
   ) : (
     <div>Welcome to SoundHaven! Log in to start your own library, comment on tracks, and create playlists.</div>
   );
@@ -75,15 +82,13 @@ const HomePage: React.FC = () => {
   return (
     <div className='flex-col'>
       <NavBar
-        onLoginClick={() => openModalWithContent(
-          <LoginForm onCloseModal={toggleModal} />
-        )}
+        onLoginClick={openLoginModal}
         onRegisterClick={openRegistrationModal}
       >
         {navBarContent}
       </NavBar>
 
-      <div className="flex min-h-screen font-dyslexic">
+      <div className="flex min-h-screen">
         <Head>
           <title>SoundHaven</title>
           <meta name="description" content="Discover and manage music with SoundHaven" />

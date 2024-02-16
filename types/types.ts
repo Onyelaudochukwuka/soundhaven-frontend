@@ -114,6 +114,14 @@ export interface User {
     replyToId?: number; // Optional ID of the comment being replied to
     replyTo?: Comment; // Optional Comment being replied to
   };
+
+  export interface CommentsContextType {
+    comments: Comment[];
+    fetchComments: (trackId: number, page?: number, limit?: number) => Promise<void>;
+    addComment: (trackId: number, userId: number | undefined, content: string, token: string) => Promise<void>;
+    editComment: (commentId: number, content: string) => Promise<void>;
+    deleteComment: (commentId: number) => Promise<void>;
+  }
   
   export type Marker = {
     id: number;

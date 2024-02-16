@@ -10,14 +10,9 @@ interface NavBarProps {
 }
 
 const NavBar: React.FC<NavBarProps> = ({ children, onLoginClick, onRegisterClick }) => {
-  const { user, logout } = useAuth();
+  const { user, logout, loading } = useAuth();
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef(null);
-
-  // This useEffect is for debugging purposes to see when the user state updates
-  useEffect(() => {
-    console.log("Current User in NavBar:", user);
-  }, [user]);
 
   const toggleDropdown = () => setShowDropdown(!showDropdown);
 
@@ -27,6 +22,12 @@ const NavBar: React.FC<NavBarProps> = ({ children, onLoginClick, onRegisterClick
     }
   };
 
+  // Define handleLogout function
+  const handleLogout = () => {
+    logout(); // Call the logout method from useAuth hook
+    setShowDropdown(false); // Optionally close the dropdown
+  };
+
   useEffect(() => {
     document.addEventListener('mousedown', handleClickOutside);
     return () => {
@@ -34,10 +35,14 @@ const NavBar: React.FC<NavBarProps> = ({ children, onLoginClick, onRegisterClick
     };
   }, []);
 
-  const handleLogout = () => {
-    logout();
-    setShowDropdown(false); // Close dropdown on logout
-  };
+  // This useEffect is for debugging purposes to see when the user state updates
+  useEffect(() => {
+    console.log("Current User in NavBar:", user);
+  }, [user]);
+
+  if (loading) {
+    return <div className="p-4 bg-gray-100 text-center">Logging in...</div>;
+  }
 
   return (
     <div className="flex justify-between items-center p-4 bg-gray-100">

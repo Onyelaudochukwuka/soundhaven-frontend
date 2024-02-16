@@ -7,6 +7,7 @@ import CommentsPanel from '../comments/CommentsPanel';
 import { deleteTrack, fetchTracks } from '@/services/apiService';
 import { TracksContext } from '@/contexts/TracksContext';
 import { PlaybackContext } from '@/contexts/PlaybackContext';
+import CommentsContext from '@/contexts/CommentsContext';
 import { Track } from '../../../types/types';
 
 interface MainContentProps {

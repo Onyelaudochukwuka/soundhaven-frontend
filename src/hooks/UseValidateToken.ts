@@ -1,5 +1,25 @@
 import { useEffect, useState } from 'react';
-import { validateToken, getToken } from '@/services/apiService';
+import { validateToken } from '@/services/apiService';
+
+// Assuming validateTokenFromLocalStorage is either imported here or defined within this file
+const validateTokenFromLocalStorage = async () => {
+  const token = localStorage.getItem('token');
+  console.log("Retrieving token from localStorage for validation:", token);
+
+  if (!token) {
+    throw new Error('No token found in localStorage');
+  }
+
+  try {
+    // Directly use validateToken function with the retrieved token
+    const response = await validateToken(token);
+    console.log("Response from validateToken with localStorage token:", response);
+    return response;
+  } catch (error) {
+    console.error('Error validating token retrieved from localStorage:', error);
+    throw error;
+  }
+};
 
 export default function useValidateToken() {
   console.log("useValidateToken hook executing"); // Log when the hook is executing
@@ -7,23 +27,15 @@ export default function useValidateToken() {
   const [isValid, setIsValid] = useState(false);
 
   useEffect(() => {
-    const currentToken = getToken(); 
-    console.log("Current token in useEffect:", currentToken); // Log the current token
-
-    if (currentToken) {
-      validateToken()
-        .then(() => {
-          console.log("Token is valid"); // Log if the token validation is successful
-          setIsValid(true);
-        })
-        .catch(() => {
-          console.log("Token validation failed"); // Log if the token validation fails
-          setIsValid(false);
-        });
-    } else {
-      console.log("No token found or token is empty");
-    }
-  }, [getToken()]);
-
+    validateTokenFromLocalStorage()
+      .then(() => {
+        console.log("Token is valid"); // Log if the token validation is successful
+        setIsValid(true);
+      })
+      .catch(() => {
+        console.log("Token validation failed"); // Log if the token validation fails
+        setIsValid(false);
+      });
+  }, []); 
   return isValid;
 }

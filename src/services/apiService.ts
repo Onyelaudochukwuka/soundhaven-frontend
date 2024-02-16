@@ -64,39 +64,6 @@ export const getToken = () => {
   const token = localStorage.getItem('token');
   return token || '';  // Return the token, or an empty string if it's not found
 };
-
-export const validateToken = async () => {
-  const token = localStorage.getItem('token');
-  console.log("Validating token from localStorage:", token);
-
-  if (!token) {
-    throw new Error('No token found in localStorage');
-  }
-
-  try {
-    const response = await fetch(`${backendUrl}/auth/validateToken`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ token }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`Token validation failed with status: ${response.status}`);
-    }
-
-    const jsonResponse = await response.json();
-    console.log("Response from validateToken:", jsonResponse);
-
-    return jsonResponse;
-  } catch (error) {
-    console.error('Error validating token:', error);
-    throw error;
-  }
-};
-
-
 export const login = async (email: string, password: string) => {
   console.log("Login request data:", { email, password });
 
@@ -108,30 +75,36 @@ export const login = async (email: string, password: string) => {
     });
 
     if (!response.ok) {
+      // Efficiently handle and display backend validation or error messages
       const errorData = await response.json();
-      const errorMessage = errorData.message || 'Login failed';
+      const errorMessage = errorData.message || 'An error occurred during login.';
       console.error('Login error:', errorMessage);
-      throw new Error(`Error ${response.status}: ${errorMessage}`);
+      throw new Error(errorMessage);
     }
 
     const data = await response.json();
     console.log("Login response data:", data);
 
-    if (!data || !data.access_token) {
-      console.error('Invalid response structure:', data);
-      throw new Error('Login response does not include token');
+    if (!data || !data.access_token || !data.user) {
+      console.error('Login response missing token or user data:', data);
+      throw new Error('Incomplete login response from server.');
     }
 
+    // Store token and user data for global application use
     localStorage.setItem('token', data.access_token);
-    console.log('Token stored:', localStorage.getItem('token'));
+    localStorage.setItem('user', JSON.stringify(data.user));
+    console.log('Login successful, token and user data stored.');
 
-    return data; // Return the entire data object for further inspection
+    // Return user and token data for immediate use in the application if needed
+    return { user: data.user, access_token: data.access_token };
   } catch (error) {
-    console.error('Error during login:', error);
-    throw error;
+    console.error('Error during login process:', error.message);
+    // Clear potentially invalid or outdated data
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    throw error; // Re-throw the error to be handled by the caller (e.g., login form)
   }
 };
-
 
 
 export const logout = async () => {

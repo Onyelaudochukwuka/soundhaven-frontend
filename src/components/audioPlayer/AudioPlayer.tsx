@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect, useContext } from 'react';
+import React, { useRef, useState, useEffect, useContext, useCallback } from 'react';
 import WaveSurfer from 'wavesurfer.js';
 import RegionsPlugin from 'wavesurfer.js/dist/plugins/regions.js';
 import { Region, RegionParams, } from 'wavesurfer.js/dist/plugins/regions.js';
@@ -8,6 +8,7 @@ import AudioControls from './AudioControls';
 import { PlaybackContext } from '@/contexts/PlaybackContext';
 import TrackInfo from './TrackInfo';
 import Modal from '../Modal';
+import { useComments } from '@/hooks/useComments';
 
 interface AudioPlayerProps {
   track: Track;
@@ -33,13 +34,57 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ track, isFavorite, onToggleFa
   const waveformRef = useRef(null);
   const waveSurferRef = useRef<WaveSurfer | null>(null);
 
+  // Debounced double click handler defined with useCallback at the top level
+  const debouncedHandleDoubleClick = useCallback(debounce((e) => {
+    if (regionsRef.current && waveformRef.current) {
+      const clickPositionX = e.clientX - waveformRef.current.getBoundingClientRect().left;
+      const clickTime = waveSurferRef.current.getDuration() * (clickPositionX / waveformRef.current.offsetWidth);
+      
+      const region = regionsRef.current.addRegion({
+        start: clickTime,
+        end: clickTime,
+        color: 'rgba(255, 165, 0, 0.5)',
+      });
+
+      setRegionParams({
+        id: region.id,
+        start: clickTime,
+        color: 'rgba(255, 165, 0, 0.5)'
+      });
+
+      setModalOpen(true);
+    }
+  }, 300), [setRegionParams, setModalOpen]); // Dependencies for useCallback
+
+  // Disables spacebar playing/pausing audio when comment modal is open.
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      // Check if modal is open and the pressed key is the spacebar
+      if (modalOpen && event.code === 'Space') {
+        event.preventDefault(); // Prevent the default spacebar action (play/pause)
+      }
+    };
+  
+    // Add event listener when component mounts
+    document.addEventListener('keydown', handleKeyDown);
+  
+    // Remove event listener on cleanup
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [modalOpen]);
+
+  // Main hook for waveform initialization
   useEffect(() => {
     if (waveformRef.current) {
       waveSurferRef.current = WaveSurfer.create({
         container: waveformRef.current,
         waveColor: 'violet',
         progressColor: 'purple',
-        backend: 'WebAudio'
+        backend: 'WebAudio',
+        plugins: [
+          RegionsPlugin.create(),
+        ]
       });
 
     console.log("Wavesurfer instance created:", waveSurferRef.current);
@@ -63,34 +108,29 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ track, isFavorite, onToggleFa
       console.error('WaveSurfer error:', error);
     });
 
-    const handleDoubleClick = (e) => {
-      if (regionsRef.current) {
-        const clickPositionX = e.clientX - waveformRef.current.getBoundingClientRect().left;
-        const clickTime = waveSurferRef.current.getDuration() * clickPositionX / waveformRef.current.offsetWidth;
-        regionsRef.current.addRegion({
-          start: clickTime, // Add a marker at the clicked time
-          end: clickTime, // Zero-length region for a marker
-          color: 'rgba(255, 165, 0, 0.5)' // Optional: customize marker color
-        });
-      }
-    };
+      // Add the debounced event listener
+      const waveformElement = waveformRef.current;
+      waveformElement.addEventListener('dblclick', debouncedHandleDoubleClick);
 
-    waveformRef.current.addEventListener('dblclick', handleDoubleClick);
+      // Cleanup
+      return () => {
+        waveSurferRef.current.destroy();
+        waveformElement.removeEventListener('dblclick', debouncedHandleDoubleClick);
+      };
+    }
+  }, [track.filePath, debouncedHandleDoubleClick, isPlaying]);
 
-    return () => {
-      waveSurferRef.current.destroy();
-      if (regionsRef.current) {
-        regionsRef.current.destroy(); // Destroy the Regions plugin instance too
-      }
-    };
+  const { addComment } = useComments();
 
-  }
-}, [track.filePath]);
-
-
+  // New comment submit code that uses Comments context
+  // const handleCommentSubmit = async (submittedComment) => {
+  //   // Assuming you have track ID, user ID, and token available
+  //   await addComment(track.id, userId, submittedComment, token);
+  //   // Close the modal after submitting
+  //   setModalOpen(false);
+  // };
 
   // When the comment is submitted, add the region with the comment
-  // handleCommentSubmit now correctly recognizes addRegion
   const handleCommentSubmit = (submittedComment: string) => {
     if (regionParams && waveSurferRef.current) {
       waveSurferRef.current.addRegion({
