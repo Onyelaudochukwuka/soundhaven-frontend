@@ -9,6 +9,7 @@ import { PlaybackContext } from '@/contexts/PlaybackContext';
 import TrackInfo from './TrackInfo';
 import Modal from '../Modal';
 import { useComments } from '@/hooks/useComments';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface AudioPlayerProps {
   track: Track;
@@ -23,6 +24,7 @@ interface AudioPlayerProps {
 
 
 const AudioPlayer: React.FC<AudioPlayerProps> = ({ track, isFavorite, onToggleFavorite, playbackSpeed, onPlaybackSpeedChange, volume, onVolumeChange, onTogglePlay }) => {
+  const { user, token } = useAuth();
   const { isPlaying, togglePlayback } = useContext(PlaybackContext);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -122,21 +124,14 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ track, isFavorite, onToggleFa
 
   const { addComment } = useComments();
 
-  // New comment submit code that uses Comments context
-  // const handleCommentSubmit = async (submittedComment) => {
-  //   // Assuming you have track ID, user ID, and token available
-  //   await addComment(track.id, userId, submittedComment, token);
-  //   // Close the modal after submitting
-  //   setModalOpen(false);
-  // };
-
-  // When the comment is submitted, add the region with the comment
-  const handleCommentSubmit = (submittedComment: string) => {
-    if (regionParams && waveSurferRef.current) {
-      waveSurferRef.current.addRegion({
-        ...regionParams,
-        data: { comment: submittedComment },
-      });
+  const handleCommentSubmit = async (submittedComment: string) => {
+    if (regionParams && waveSurferRef.current && user && token) {
+      try {
+        await addComment(track.id, user.id, submittedComment, token); // Assuming addComment requires track ID, user ID, comment text, and token
+        console.log("Comment added successfully");
+      } catch (error) {
+        console.error("Error adding comment:", error);
+      }
       setModalOpen(false);
     }
   };
@@ -223,19 +218,23 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ track, isFavorite, onToggleFa
 
       )}
       {modalOpen && (
-        <Modal
-          isOpen={modalOpen}
-          onClose={() => setModalOpen(false)}
-        >
-          <form onSubmit={(e) => {
-            e.preventDefault();
-            handleCommentSubmit(e.target.comment.value); // Assuming your modal form has an input with name="comment"
-          }}>
-            <input name="comment" type="text" placeholder="Enter comment" />
-            <button type="submit">Submit</button>
-          </form>
-        </Modal>
-      )}
+  <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)}>
+    <form onSubmit={(e) => {
+      e.preventDefault();
+      handleCommentSubmit(comment); // Directly use the comment state
+      setComment(''); // Clear the comment input after submission
+    }}>
+      <input
+        name="comment"
+        type="text"
+        placeholder="Enter comment"
+        value={comment}
+        onChange={(e) => setComment(e.target.value)} // Update comment state on change
+      />
+      <button type="submit">Submit</button>
+    </form>
+  </Modal>
+)}
     </div>
   );
 };

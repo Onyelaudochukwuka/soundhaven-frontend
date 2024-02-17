@@ -3,6 +3,8 @@ import { useContext } from 'react';
 import CommentsContext from '@/contexts/CommentsContext';
 import { CommentsContextType } from '../../types/types';
 
+// Add pagination handling
+
 export const useComments = (): CommentsContextType => {
   const context = useContext(CommentsContext);
   if (!context) {

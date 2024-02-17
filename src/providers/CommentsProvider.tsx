@@ -12,34 +12,62 @@ interface CommentsProviderProps {
 export const CommentsProvider: FunctionComponent<CommentsProviderProps> = ({ children }) => {
     const [comments, setComments] = useState<Comment[]>([]);
 
-    const fetchComments = async (trackId, page = 1, limit = 10) => {
+    const fetchComments = async (trackId: number, page: number = 1, limit: number = 10) => {
+        if (!trackId || trackId <= 0) {
+          console.error("Invalid trackId, skipping fetchComments");
+          return;
+        }
+    
         try {
-            const response = await fetch(`${backendUrl}/comments?trackId=${trackId}&page=${page}&limit=${limit}`);
-            if (!response.ok) throw new Error('Failed to fetch comments');
-            const data = await response.json();
-            setComments(data.comments); // Assuming the API returns an object with a comments array
+          const response = await fetch(`${backendUrl}/comments?trackId=${trackId}&page=${page}&limit=${limit}`);
+          console.log("Raw response:", response); // Debugging: Log the raw response
+          
+          if (!response.ok) {
+            throw new Error(`Failed to fetch comments: ${response.statusText}`);
+          }
+    
+          const data = await response.json();
+          console.log("Parsed data:", data); // Debugging: Log the parsed JSON
+          console.log("Is Array:", Array.isArray(data.comments)); // Log whether it's an array
+    
+          if (!Array.isArray(data)) {
+            console.error("Expected an array of comments, received:", typeof data);
+            return;
+          }
+    
+          console.log("Fetched comments:", data);
+          setComments(data);
         } catch (error) {
-            console.error("Error fetching comments:", error);
+          console.error("Error fetching comments:", error);
         }
     };
 
-    const addComment = async (trackId, userId, content, token) => {
+      const addComment = async (trackId: number, userId: number, content: string, token: string) => {
         try {
-            const response = await fetch(`${backendUrl}/api/comments`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`,
-                },
-                body: JSON.stringify({ trackId, userId, content }),
-            });
-            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-            const newComment = await response.json();
-            setComments(prev => [...prev, { ...newComment, createdAt: new Date(newComment.createdAt) }]);
+          const response = await fetch(`${backendUrl}/comments`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify({ trackId, userId, content }),
+          });
+    
+          if (!response.ok) {
+            const errorData = await response.json(); // Assuming the server returns JSON with error details
+            console.error("Error adding comment:", errorData);
+            throw new Error(`HTTP error! status: ${response.status}, message: ${errorData.message}`);
+          }
+    
+          const newComment = await response.json();
+          console.log("New comment added:", newComment);
+    
+          // Add the new comment to the current state
+          setComments(prev => [...prev, { ...newComment, createdAt: new Date(newComment.createdAt) }]);
         } catch (error) {
-            console.error("Error adding comment:", error);
+          console.error("Error adding comment:", error);
         }
-    };
+      };
 
     const editComment = async (commentId, content) => {
         try {
@@ -69,8 +97,8 @@ export const CommentsProvider: FunctionComponent<CommentsProviderProps> = ({ chi
     };
 
     return (
-        <CommentsContext.Provider value={{ comments, fetchComments, addComment, editComment, deleteComment }}>
-            {children}
+        <CommentsContext.Provider value={{ comments, fetchComments, addComment, editComment: async () => {}, deleteComment: async () => {} }}>
+          {children}
         </CommentsContext.Provider>
-    );
-};
+      );
+    };

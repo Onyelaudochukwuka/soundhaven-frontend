@@ -27,19 +27,17 @@ const MainContent: React.FC<MainContentProps> = ({ error, loadTracks }) => {
     return null;
   }
 
-  const handleFetchTracks = async () => {
-    try {
-      const fetchedTracks = await fetchTracks();
-      setTracks(fetchedTracks);
-      setFetchError(null); // Reset error state on successful fetch
-    } catch (error) {
-      console.error('Failed to fetch tracks:', error);
-      setFetchError('Failed to load tracks. Please try again later.');
-    }
-  };
-
   useEffect(() => {
-    handleFetchTracks();
+    (async () => {
+      try {
+        const fetchedTracks = await fetchTracks();
+        setTracks(fetchedTracks);
+        setFetchError(null); // Reset error state on successful fetch
+      } catch (error) {
+        console.error('Failed to fetch tracks:', error);
+        setFetchError('Failed to load tracks. Please try again later.');
+      }
+    })();
   }, []);
 
   const handleUploadSuccess = async () => {
@@ -113,10 +111,12 @@ const MainContent: React.FC<MainContentProps> = ({ error, loadTracks }) => {
       <button onClick={toggleComments} className="toggle-comments-btn absolute">
         {showComments ? 'Close Comments' : 'Open Comments'}
       </button>
+
       {/* Display error passed as props */}
       {error && <ErrorMessage message={error} />}
       {/* Display fetch error */}
       {fetchError && <ErrorMessage message={fetchError} />}
+
       <div className='w-full px-8 items-center'>
         {currentTrack && (
 
@@ -140,11 +140,10 @@ const MainContent: React.FC<MainContentProps> = ({ error, loadTracks }) => {
       ) : (
         <p>No tracks available</p>
       )}
-      <CommentsPanel
-        trackId={selectedTrackId ?? 0}
-        show={showComments}
-        onClose={toggleComments}
-      />
+      {currentTrack?.id && showComments && (
+        <CommentsPanel trackId={currentTrack.id} show={showComments} onClose={toggleComments} />
+      )}
+
     </main>
     // </div>
   );
