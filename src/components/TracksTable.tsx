@@ -1,8 +1,6 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { TracksContext } from '@/contexts/TracksContext';
-import { PlaybackContext } from '@/contexts/PlaybackContext';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faPlay } from '@fortawesome/free-solid-svg-icons';
+import { useTracks } from '@/hooks/useTracks';
+import { usePlayback } from '@/hooks/UsePlayback';
 import { Track, Artist, Album, Comment, User } from '../../types/types';
 import { deleteTrack, fetchArtists, fetchAlbums } from '../services/apiService';
 import Modal from './Modal'; // Import your modal component
@@ -16,14 +14,14 @@ interface TracksTableProps {
 }
 
 const TracksTable: React.FC<TracksTableProps> = ({ onDelete, onUpdate, onSelectTrack }) => {
-  const { tracks } = useContext(TracksContext);
-  const { currentTrack } = useContext(PlaybackContext);
+  const { tracks, error } = useTracks();
+  const { selectTrack, currentTrack } = usePlayback();
 
   if (!tracks) {
     console.error('TracksContext not found');
     return null; // or some error component
   }
-  
+
   console.log("TracksTable received tracks: ", tracks);
 
   const [artists, setArtists] = useState<Artist[]>([]);
@@ -75,20 +73,20 @@ const TracksTable: React.FC<TracksTableProps> = ({ onDelete, onUpdate, onSelectT
 
   const handleSave = (updatedTrackData: Partial<Track>) => {
     if (!editingTrack) return;
-  
+
     (Object.keys(updatedTrackData) as Array<keyof Track>).forEach(field => {
       // Check if the field exists in editingTrack using a safer approach
       if (Object.prototype.hasOwnProperty.call(editingTrack, field)) {
         const oldValue = editingTrack[field];
         const newValue = updatedTrackData[field];
-  
+
         if (oldValue !== newValue) {
           const valueToUpdate: string = serializeValue(newValue);
           onUpdate(editingTrack.id, field, valueToUpdate);
         }
       }
     });
-  
+
     closeModal();
   };
 
@@ -96,11 +94,11 @@ const TracksTable: React.FC<TracksTableProps> = ({ onDelete, onUpdate, onSelectT
   const handleDoubleClickOnRow = (track: Track, index: number) => {
     console.log("Double-clicked track:", track);
     if (track.filePath) {
-      onSelectTrack(track.id, track.filePath, index); // Fixed to use `onSelectTrack` and checked `track.filePath`
+      selectTrack(track, index); // Use selectTrack from usePlayback
     } else {
       console.error("Track file path is undefined");
     }
-  };  
+  };
 
   const toggleMenu = (id: number, event: React.MouseEvent) => {
     event.stopPropagation(); // This prevents the double-click event for playback
@@ -109,6 +107,7 @@ const TracksTable: React.FC<TracksTableProps> = ({ onDelete, onUpdate, onSelectT
 
   return (
     <>
+      {error && <div>Error loading tracks: {error}</div>}
       <table className="min-w-full divide-y divide-gray-200">
         <thead className="bg-gray-50">
           <tr>
@@ -121,10 +120,10 @@ const TracksTable: React.FC<TracksTableProps> = ({ onDelete, onUpdate, onSelectT
         </thead>
         <tbody className="bg-white divide-y divide-gray-200">
           {tracks.map((track, index) => (
-            <tr key={track.id} 
-            onDoubleClick={() => onSelectTrack(track.id, track.filePath, index)}
-            className={`hover:bg-gray-100 ${currentTrack && track.id === currentTrack.id ? 'bg-blue-100' : ''}`} // Highlight the row if it's the current track
-        >              <td className="px-4 py-2">{track.name}</td>
+            <tr key={track.id}
+              onDoubleClick={() => handleDoubleClickOnRow(track, index)}
+              className={`hover:bg-gray-100 ${currentTrack && track.id === currentTrack.id ? 'bg-blue-100' : ''}`}>
+              <td className="px-4 py-2">{track.name}</td>
               <td className="px-4 py-2">{track.artist?.name ?? 'Unknown Artist'}</td>
               <td className="px-4 py-2">{track.album?.name ?? 'No Album'}</td>
               <td className="px-4 py-2">{track.duration}</td>
@@ -136,7 +135,7 @@ const TracksTable: React.FC<TracksTableProps> = ({ onDelete, onUpdate, onSelectT
                     <button className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                       onClick={(e) => {
                         e.stopPropagation();
-                        onDelete(track.id); 
+                        onDelete(track.id);
                       }}>
                       Delete Track
                     </button>
@@ -147,14 +146,11 @@ const TracksTable: React.FC<TracksTableProps> = ({ onDelete, onUpdate, onSelectT
           ))}
         </tbody>
       </table>
-      <Modal isOpen={isModalOpen} onClose={closeModal}>
-        {editingTrack && (
-          <EditTrackForm
-            track={editingTrack}
-            onSave={handleSave}
-          />
-        )}
-      </Modal>
+      {isModalOpen && editingTrack && (
+        <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}>
+          <EditTrackForm track={editingTrack} onSave={handleSave} />
+        </Modal>
+      )}
     </>
   );
 };

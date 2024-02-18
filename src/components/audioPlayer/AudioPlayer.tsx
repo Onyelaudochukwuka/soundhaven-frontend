@@ -1,18 +1,17 @@
-import React, { useRef, useState, useEffect, useContext, useCallback } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import WaveSurfer from 'wavesurfer.js';
 import RegionsPlugin from 'wavesurfer.js/dist/plugins/regions.js';
-import { Region, RegionParams, } from 'wavesurfer.js/dist/plugins/regions.js';
-import { Track } from '../../../types/types';
-import debounce from 'lodash/debounce';
+import { Marker } from '../../../types/types';
 import AudioControls from './AudioControls';
-import { PlaybackContext } from '@/contexts/PlaybackContext';
 import TrackInfo from './TrackInfo';
 import Modal from '../Modal';
 import { useComments } from '@/hooks/useComments';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTracks } from '@/hooks/useTracks';
+import { usePlayback } from '@/hooks/UsePlayback';
+import { ApiError } from '@/utils/apiError';
 
 interface AudioPlayerProps {
-  track: Track;
   isFavorite: boolean;
   onToggleFavorite: () => void;
   playbackSpeed: number;
@@ -22,141 +21,237 @@ interface AudioPlayerProps {
   onTogglePlay: () => void;
 }
 
+type RegionParamsType = {
+  id: string;
+  start: number;
+  color: string;
+};
 
-const AudioPlayer: React.FC<AudioPlayerProps> = ({ track, isFavorite, onToggleFavorite, playbackSpeed, onPlaybackSpeedChange, volume, onVolumeChange, onTogglePlay }) => {
+const AudioPlayer: React.FC<AudioPlayerProps> = ({ isFavorite, onToggleFavorite, playbackSpeed, onPlaybackSpeedChange, volume, onVolumeChange, onTogglePlay }) => {
   const { user, token } = useAuth();
-  const { isPlaying, togglePlayback } = useContext(PlaybackContext);
+  const { isPlaying, currentTrack, togglePlayback } = usePlayback();
+  const { tracks } = useTracks();
+  const { fetchCommentsAndMarkers, fetchComments, addCommentWithMarker, comments } = useComments();
+
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [comment, setComment] = useState('');
-  const [regionParams, setRegionParams] = useState(null);
+  const [regionParams, setRegionParams] = useState<RegionParamsType | null>(null);
 
-  const regionsRef = useRef(null); // Added to store the registered Regions instance
+  const regionsRef = useRef<RegionsPlugin | null>(null);
   const waveformRef = useRef(null);
   const waveSurferRef = useRef<WaveSurfer | null>(null);
+  
 
-  // Debounced double click handler defined with useCallback at the top level
-  const debouncedHandleDoubleClick = useCallback(debounce((e) => {
-    if (regionsRef.current && waveformRef.current) {
-      const clickPositionX = e.clientX - waveformRef.current.getBoundingClientRect().left;
-      const clickTime = waveSurferRef.current.getDuration() * (clickPositionX / waveformRef.current.offsetWidth);
-      
+
+  const handleWaveformDoubleClick = (e: MouseEvent) => {
+    if (!regionsRef.current || !waveformRef.current || !waveSurferRef.current) return;
+  
+    const bounds = waveformRef.current.getBoundingClientRect();
+    const clickPositionX = e.clientX - bounds.left;
+    const clickTime = waveSurferRef.current.getDuration() * (clickPositionX / bounds.width);
+  
+    try {
       const region = regionsRef.current.addRegion({
         start: clickTime,
-        end: clickTime,
-        color: 'rgba(255, 165, 0, 0.5)',
+        end: clickTime + 0.5, // Assuming a default duration for visual representation
+        color: 'rgba(0, 123, 255, 0.5)',
+        drag: false,
+        resize: false,
       });
-
-      setRegionParams({
-        id: region.id,
-        start: clickTime,
-        color: 'rgba(255, 165, 0, 0.5)'
-      });
-
-      setModalOpen(true);
-    }
-  }, 300), [setRegionParams, setModalOpen]); // Dependencies for useCallback
-
-  // Disables spacebar playing/pausing audio when comment modal is open.
-  useEffect(() => {
-    const handleKeyDown = (event) => {
-      // Check if modal is open and the pressed key is the spacebar
-      if (modalOpen && event.code === 'Space') {
-        event.preventDefault(); // Prevent the default spacebar action (play/pause)
-      }
-    };
   
-    // Add event listener when component mounts
-    document.addEventListener('keydown', handleKeyDown);
-  
-    // Remove event listener on cleanup
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [modalOpen]);
-
-  // Main hook for waveform initialization
-  useEffect(() => {
-    if (waveformRef.current) {
-      waveSurferRef.current = WaveSurfer.create({
-        container: waveformRef.current,
-        waveColor: 'violet',
-        progressColor: 'purple',
-        backend: 'WebAudio',
-        plugins: [
-          RegionsPlugin.create(),
-        ]
-      });
-
-    console.log("Wavesurfer instance created:", waveSurferRef.current);
-
-    waveSurferRef.current.load(`${process.env.NEXT_PUBLIC_BACKEND_URL}/${track.filePath}`);
-
-    waveSurferRef.current.on('ready', () => {
-      console.log('WaveSurfer is ready. Duration:', waveSurferRef.current.getDuration());
-      setIsLoading(false);
-      if (isPlaying) {
-        waveSurferRef.current.play();
-      }
-
-      // Register and store the Regions plugin instance
-      regionsRef.current = waveSurferRef.current.registerPlugin(
-          RegionsPlugin.create()
-          );
-  });
-
-    waveSurferRef.current.on('error', (error) => {
-      console.error('WaveSurfer error:', error);
-    });
-
-      // Add the debounced event listener
-      const waveformElement = waveformRef.current;
-      waveformElement.addEventListener('dblclick', debouncedHandleDoubleClick);
-
-      // Cleanup
-      return () => {
-        waveSurferRef.current.destroy();
-        waveformElement.removeEventListener('dblclick', debouncedHandleDoubleClick);
-      };
-    }
-  }, [track.filePath, debouncedHandleDoubleClick, isPlaying]);
-
-  const { addComment } = useComments();
-
-  const handleCommentSubmit = async (submittedComment: string) => {
-    if (regionParams && waveSurferRef.current && user && token) {
-      try {
-        await addComment(track.id, user.id, submittedComment, token); // Assuming addComment requires track ID, user ID, comment text, and token
-        console.log("Comment added successfully");
-      } catch (error) {
-        console.error("Error adding comment:", error);
-      }
-      setModalOpen(false);
+      // Update regionParams with the details of the newly added region
+      setRegionParams({ id: region.id, start: clickTime, color: region.color });
+      setModalOpen(true); // Open the modal to submit a comment
+    } catch (error) {
+      console.error("Failed to add region:", error);
     }
   };
 
-  // Handle play/pause when isPlaying changes or component mounts
-  useEffect(() => {
-    // Log the current state to debug
-    console.log(`Is playing: ${isPlaying}, Is loading: ${isLoading}`);
-    
-    const wavesurfer = waveSurferRef.current;
-    if (wavesurfer && !isLoading) {
-      try {
-        if (isPlaying) {
-          console.log('Playing audio');
-          wavesurfer.play();
-        } else {
-          console.log('Pausing audio');
-          wavesurfer.pause();
-        }
-      } catch (error) {
-        console.error('Error with play/pause:', error);
-        setError(`Playback error: ${error}`);
+  const handleCommentSubmit = async (submittedComment: string) => {
+    // Check each prerequisite individually and log if any is missing
+    if (!regionParams) {
+      console.error("Region parameters are missing.");
+    }
+    if (!waveSurferRef.current) {
+      console.error("WaveSurfer instance is missing.");
+    }
+    if (!user) {
+      console.error("User information is missing.");
+    }
+    if (!token) {
+      console.error("Authentication token is missing.");
+    }
+    if (!currentTrack) {
+      console.error("Current track information is missing.");
+    }
+
+    // Only proceed if all conditions are met
+    if (!regionParams || !waveSurferRef.current || !user || !token || !currentTrack) {
+      console.error("Missing required information for submitting comment with marker.");
+      return;
+    }
+
+    try {
+      // Extract necessary data from regionParams if it contains more than start time
+      const { start } = regionParams;
+
+      // Call addCommentWithMarker with the necessary parameters
+      // Note: Assuming addCommentWithMarker is adjusted to return a Promise of CommentWithMarkerResponse
+      const newComment = await addCommentWithMarker(
+        currentTrack.id,
+        user.id,
+        submittedComment,
+        token,
+        start,
+        // Optionally pass end time if available in regionParams
+      );
+
+      console.log("Comment with marker added:", newComment);
+
+      // Refresh comments and markers to reflect the new addition
+      await fetchCommentsAndMarkers(currentTrack.id);
+      console.log("Comments and markers updated.");
+
+      // Close the modal and potentially reset state as needed
+      setModalOpen(false);
+      // Reset other state variables if necessary
+    } catch (error) {
+      if (error instanceof ApiError) {
+        // Handle ApiError specifically
+        console.error("API Error when adding comment with marker:", error.message);
+        // Optionally, handle based on status code or detailed response
+      } else {
+        // Handle unexpected errors
+        console.error("Unexpected error adding comment with marker:", error);
       }
     }
-  }, [isPlaying, isLoading]);
+  };
+
+  useEffect(() => {
+    // Add or update markers only when WaveSurfer is ready and comments are available
+    const handleWaveSurferReady = () => {
+      if (!regionsRef.current || !comments.length) return;
+  
+      // Ensure existing regions are cleared to prevent duplicates
+      regionsRef.current.clearRegions();
+  
+      // Add each marker as a region
+      comments.forEach(comment => {
+        const marker = comment.marker;
+        if (marker) {
+          regionsRef.current.addRegion({
+            start: marker.start,
+            end: marker.end || marker.start + 0.5, // Default end time if not provided
+            color: 'rgba(0, 123, 255, 0.5)',
+            drag: false,
+            resize: false,
+          });
+        }
+      });
+    };
+  
+    // Listen for the 'ready' event to add markers
+    const waveSurfer = waveSurferRef.current;
+    if (waveSurfer) {
+      waveSurfer.on('ready', handleWaveSurferReady);
+    }
+  
+    // Cleanup to remove the 'ready' event listener
+    return () => {
+      if (waveSurfer) {
+        waveSurfer.un('ready', handleWaveSurferReady);
+      }
+    };
+  }, [comments]);
+  
+  useEffect(() => {
+    // This useEffect triggers fetching comments when the track changes
+    if (currentTrack?.id) {
+      fetchCommentsAndMarkers(currentTrack.id);
+    }
+  }, [currentTrack?.id, fetchCommentsAndMarkers]);
+  
+  // Initialization of WaveSurfer instance
+  useEffect(() => {
+    if (!waveformRef.current) return;
+  
+    const waveSurferInstance = WaveSurfer.create({
+      container: waveformRef.current,
+      waveColor: 'violet',
+      progressColor: 'purple',
+      backend: 'WebAudio',
+      plugins: [RegionsPlugin.create()],
+    });
+  
+    waveSurferRef.current = waveSurferInstance;
+  
+    waveSurferInstance.load(currentTrack.filePath);
+  
+    return () => {
+      waveSurferInstance.destroy();
+    };
+  }, [currentTrack.filePath]);
+
+  useEffect(() => {
+    const addMarkersToWaveform = () => {
+      // Guard clause to ensure all conditions are met: WaveSurfer instance exists, is ready, and comments are available
+      if (!regionsRef.current || !waveSurferRef.current || !comments.length) return;
+  
+      // Ensure existing regions are cleared to prevent duplicates
+      regionsRef.current.clearRegions();
+  
+      // Add each marker as a region
+      comments.forEach(comment => {
+        const marker = comment.marker;
+        if (marker) {
+          regionsRef.current.addRegion({
+            start: marker.start,
+            end: marker.end || marker.start + 0.5, // Default end time if not provided
+            color: 'rgba(0, 123, 255, 0.5)',
+            drag: false,
+            resize: false,
+          });
+        }
+      });
+    };
+  
+    // Register event listener for WaveSurfer's 'ready' event to handle initial marker rendering
+    const waveSurfer = waveSurferRef.current;
+    if (waveSurfer) {
+      waveSurfer.on('ready', addMarkersToWaveform);
+    }
+  
+    // Immediate attempt to add markers in case the WaveSurfer instance is already ready and comments are loaded
+    addMarkersToWaveform();
+  
+    // Cleanup to remove the 'ready' event listener and prevent memory leaks
+    return () => {
+      if (waveSurfer) {
+        waveSurfer.un('ready', addMarkersToWaveform);
+      }
+    };
+  }, [comments, waveSurferRef, regionsRef]);
+
+  // // Disables spacebar playing/pausing audio when comment modal is open.
+  // useEffect(() => {
+  //   const handleKeyDown = (event) => {
+  //     // Check if modal is open and the pressed key is the spacebar
+  //     if (modalOpen && event.code === 'Space') {
+  //       event.preventDefault(); // Prevent the default spacebar action (play/pause)
+  //     }
+  //   };
+
+  //   // Add event listener when component mounts
+  //   document.addEventListener('keydown', handleKeyDown);
+
+  //   // Remove event listener on cleanup
+  //   return () => {
+  //     document.removeEventListener('keydown', handleKeyDown);
+  //   };
+  // }, [modalOpen]);
+  
 
   const handlePlayPause = () => {
     onTogglePlay();
@@ -194,9 +289,9 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ track, isFavorite, onToggleFa
 
   return (
     <div>
-      {track && (
+      {currentTrack && (
         <div>
-          <TrackInfo track={track} />
+          <TrackInfo track={currentTrack} />
 
           <div ref={waveformRef} style={{ height: '128px', width: '100%' }} />
           <AudioControls
@@ -212,29 +307,28 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ track, isFavorite, onToggleFa
             isFavorite={isFavorite}
             playbackSpeed={playbackSpeed}
             volume={volume}
-            onTogglePlay={togglePlayback}
           />
         </div>
 
       )}
       {modalOpen && (
-  <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)}>
-    <form onSubmit={(e) => {
-      e.preventDefault();
-      handleCommentSubmit(comment); // Directly use the comment state
-      setComment(''); // Clear the comment input after submission
-    }}>
-      <input
-        name="comment"
-        type="text"
-        placeholder="Enter comment"
-        value={comment}
-        onChange={(e) => setComment(e.target.value)} // Update comment state on change
-      />
-      <button type="submit">Submit</button>
-    </form>
-  </Modal>
-)}
+        <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)}>
+          <form onSubmit={(e) => {
+            e.preventDefault();
+            handleCommentSubmit(comment); // Directly use the comment state
+            setComment(''); // Clear the comment input after submission
+          }}>
+            <input
+              name="comment"
+              type="text"
+              placeholder="Enter comment"
+              value={comment}
+              onChange={(e) => setComment(e.target.value)} // Update comment state on change
+            />
+            <button type="submit">Submit</button>
+          </form>
+        </Modal>
+      )}
     </div>
   );
 };

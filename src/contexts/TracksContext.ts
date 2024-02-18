@@ -1,23 +1,18 @@
 import { createContext } from 'react';
 import { Track } from '../../types/types';
 
-// Define the interface for your context state
 interface TracksContextType {
   tracks: Track[];
-  setTracks: (tracks: Track[]) => void;
-  updateTrack: (trackId: number, field: keyof Track, value: string) => void;
-  trackModificationFlag?: boolean;  
-  setTrackModificationFlag?: React.Dispatch<React.SetStateAction<boolean>>;  
+  fetchTracks: () => Promise<void>;
+  updateTrack: (trackId: number, field: keyof Track, value: any) => void;
+  error: string | null;
 }
 
-// Create a default context value that adheres to the TracksContextType interface
 const defaultContextValue: TracksContextType = {
   tracks: [],
-  setTracks: () => {}, 
-  updateTrack: () => {}, 
-  trackModificationFlag: false,
-  setTrackModificationFlag: () => {}
+  fetchTracks: async () => {},
+  updateTrack: () => {},
+  error: null,
 };
 
-// Create the context with the default value
 export const TracksContext = createContext<TracksContextType>(defaultContextValue);

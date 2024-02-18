@@ -30,9 +30,9 @@ const CommentsPanel: React.FC<CommentsPanelProps> = ({ show, onClose, trackId })
     }
   }, [trackId]);
 
-  useEffect(() => {
-    console.log("CommentsPanel comments: ", comments);
-  }, [comments]);
+  // useEffect(() => {
+  //   console.log("CommentsPanel comments: ", comments);
+  // }, [comments]);
 
   // Submitting new comments
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -62,7 +62,7 @@ const CommentsPanel: React.FC<CommentsPanelProps> = ({ show, onClose, trackId })
 
   if (!show) return null;
 
-  console.log(commentsArray);
+  // console.log(commentsArray);
 
   return (
     <div className={`fixed top-0 right-0 h-full w-64 bg-white shadow-lg transform transition-transform duration-300 z-10 ${show ? 'translate-x-0 overflow-y-auto' : 'translate-x-full'}`}>

@@ -110,6 +110,7 @@ export interface User {
     userId?: number; // userId is optional
     createdAt: Date;
     marker?: Marker; // marker is optional and should be of type Marker
+    markerStart?: number; // Optional marker start time
     replies?: Comment[]; // Optional array of reply comments
     replyToId?: number; // Optional ID of the comment being replied to
     replyTo?: Comment; // Optional Comment being replied to
@@ -118,16 +119,19 @@ export interface User {
   export interface CommentsContextType {
     comments: Comment[];
     fetchComments: (trackId: number, page?: number, limit?: number) => Promise<void>;
-    addComment: (trackId: number, userId: number | undefined, content: string, token: string) => Promise<void>;
+    fetchCommentsAndMarkers: (trackId: number, page?: number, limit?: number) => Promise<void>;
+    addComment: (trackId: number, userId: number, content: string, token: string) => Promise<void>;
+    addCommentWithMarker: (trackId: number, userId: number, content: string, token: string, markerTime: number) => Promise<void>;
     editComment: (commentId: number, content: string) => Promise<void>;
     deleteComment: (commentId: number) => Promise<void>;
   }
   
   export type Marker = {
     id: number;
-    time: number; // Time in seconds
-    commentId?: number; // commentId is optional
-    comment?: Comment; // Optional Comment associated with the marker
+    start: number; // Start time in seconds
+    end: number; // End time in seconds    
+    commentId: number; 
+    comment: Comment; 
     trackId: number; // ID of the associated track
     createdAt: Date;
   };
