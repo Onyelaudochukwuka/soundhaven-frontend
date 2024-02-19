@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 // import Image from 'next/image';
 import InfiniteScroll from 'react-infinite-scroll-component';
 import { useAuth } from '@/contexts/AuthContext';
-import { useComments } from '@/hooks/useComments';
+import { useComments } from '@/hooks/UseComments';
 import CommentBlock from './CommentBlock';
 
 interface CommentsPanelProps {
@@ -13,7 +13,7 @@ interface CommentsPanelProps {
 
 const CommentsPanel: React.FC<CommentsPanelProps> = ({ show, onClose, trackId }) => {
   const { user, token, loading: authLoading } = useAuth();
-  const { comments, addComment, fetchComments } = useComments();
+  const { comments, addComment, fetchCommentsAndMarkers } = useComments();
 
   const [newComment, setNewComment] = useState<string>('');
   // const [hasMore, setHasMore] = useState<boolean>(true);
@@ -26,7 +26,7 @@ const CommentsPanel: React.FC<CommentsPanelProps> = ({ show, onClose, trackId })
 
   useEffect(() => {
     if (trackId > 0) {
-      fetchComments(trackId, 1, 10);
+      fetchCommentsAndMarkers(trackId, 1, 10);
     }
   }, [trackId]);
 
@@ -40,7 +40,7 @@ const CommentsPanel: React.FC<CommentsPanelProps> = ({ show, onClose, trackId })
     if (newComment.trim() && token && user) {
       await addComment(trackId, user.id, newComment, token);
       setNewComment('');
-      fetchComments(trackId, 1, 10); // Refetch comments after adding a new one
+      fetchCommentsAndMarkers(trackId, 1, 10); // Refetch comments after adding a new one
     }
   };
 

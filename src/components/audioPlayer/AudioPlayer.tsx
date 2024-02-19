@@ -8,7 +8,7 @@ import AudioControls from './AudioControls';
 import { PlaybackContext } from '@/contexts/PlaybackContext';
 import TrackInfo from './TrackInfo';
 import Modal from '../Modal';
-import { useComments } from '@/hooks/useComments';
+import { useComments } from '@/hooks/UseComments';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface AudioPlayerProps {
@@ -31,10 +31,38 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ track, isFavorite, onToggleFa
   const [modalOpen, setModalOpen] = useState(false);
   const [comment, setComment] = useState('');
   const [regionParams, setRegionParams] = useState(null);
+  const { comments, addComment, addMarkerAndComment, fetchCommentsAndMarkers } = useComments();
 
   const regionsRef = useRef(null); // Added to store the registered Regions instance
   const waveformRef = useRef(null);
   const waveSurferRef = useRef<WaveSurfer | null>(null);
+
+  // Fetches comments and markers
+  useEffect(() => {
+    if (track && track.id) {
+      fetchCommentsAndMarkers(track.id);
+    }
+  }, [track.id, fetchCommentsAndMarkers]);
+
+  // Renders regions on wave form
+  useEffect(() => {
+  if (comments.length > 0 && waveSurferRef.current && regionsRef.current) {
+    comments.forEach((comment) => {
+      if (comment.marker) {
+        regionsRef.current.addRegion({
+          start: comment.marker.start,
+          end: comment.marker.start + 1, // You might adjust this based on your marker's duration or visualization needs
+          color: 'rgba(255, 0, 0, 0.5)',
+          drag: false,
+          resize: false,
+          data: {
+            commentId: comment.id,
+          },
+        });
+      }
+    });
+  }
+}, [comments]);
 
   // Debounced double click handler defined with useCallback at the top level
   const debouncedHandleDoubleClick = useCallback(debounce((e) => {
@@ -44,7 +72,6 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ track, isFavorite, onToggleFa
       
       const region = regionsRef.current.addRegion({
         start: clickTime,
-        end: clickTime,
         color: 'rgba(255, 165, 0, 0.5)',
       });
 
@@ -122,17 +149,25 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ track, isFavorite, onToggleFa
     }
   }, [track.filePath, debouncedHandleDoubleClick, isPlaying]);
 
-  const { addComment } = useComments();
-
-  const handleCommentSubmit = async (submittedComment: string) => {
-    if (regionParams && waveSurferRef.current && user && token) {
-      try {
-        await addComment(track.id, user.id, submittedComment, token); // Assuming addComment requires track ID, user ID, comment text, and token
-        console.log("Comment added successfully");
-      } catch (error) {
-        console.error("Error adding comment:", error);
+  const handleCommentSubmit = async (submittedComment) => {
+    if (!user || !token) {
+      console.error("User or token not available");
+      return;
+    }
+  
+    try {
+      if (regionParams) {
+        await addMarkerAndComment(track.id, user.id, submittedComment, regionParams.start, token);
+      } else {
+        await addComment(track.id, user.id, submittedComment, token);
       }
+      console.log("Comment (and potentially marker) added successfully");
+      // Reset modal, comment input, and potentially fetch new comments/markers
       setModalOpen(false);
+      setComment('');
+      fetchCommentsAndMarkers(track.id); // Refresh comments and markers to reflect the new addition
+    } catch (error) {
+      console.error("Error submitting comment (and marker):", error);
     }
   };
 

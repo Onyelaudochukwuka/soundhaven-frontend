@@ -1,7 +1,7 @@
-// CommentsContext.ts
-import { createContext } from 'react';
-import { CommentsContextType } from '../../types/types';
+import React, { createContext, useState, useContext, FunctionComponent } from 'react';
+import { CommentsContextType, Comment } from './types'; // Adjust the import path as needed
 
-const CommentsContext = createContext<CommentsContextType | null>(null);
+// Initialize the context with a default undefined value or an initial state
+const CommentsContext = createContext<CommentsContextType | undefined>(undefined);
 
 export default CommentsContext;

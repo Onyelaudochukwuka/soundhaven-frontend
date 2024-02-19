@@ -107,7 +107,7 @@ export interface User {
     userName: string; 
     content: string;
     trackId: number;
-    userId?: number; // userId is optional
+    userId: number;
     createdAt: Date;
     marker?: Marker; // marker is optional and should be of type Marker
     replies?: Comment[]; // Optional array of reply comments
@@ -117,17 +117,20 @@ export interface User {
 
   export interface CommentsContextType {
     comments: Comment[];
+    setComments: React.Dispatch<React.SetStateAction<Comment[]>>;    
     fetchComments: (trackId: number, page?: number, limit?: number) => Promise<void>;
-    addComment: (trackId: number, userId: number | undefined, content: string, token: string) => Promise<void>;
+    fetchCommentsAndMarkers: (trackId: number, page?: number, limit?: number) => Promise<void>;
+    addComment: (trackId: number, userId: number, content: string, token: string) => Promise<void>;
+    addMarkerAndComment: (trackId: number, userId: number, content: string, start: number, token: string) => Promise<void>;
     editComment: (commentId: number, content: string) => Promise<void>;
     deleteComment: (commentId: number) => Promise<void>;
   }
   
   export type Marker = {
     id: number;
-    time: number; // Time in seconds
-    commentId?: number; // commentId is optional
-    comment?: Comment; // Optional Comment associated with the marker
+    start: number; // Time in seconds
+    commentId: number; 
+    comment: Comment; 
     trackId: number; // ID of the associated track
     createdAt: Date;
   };
