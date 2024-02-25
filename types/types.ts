@@ -128,7 +128,7 @@ export interface User {
   
   export type Marker = {
     id: number;
-    start: number; // Time in seconds
+    time: number; // Time in seconds
     commentId: number; 
     comment: Comment; 
     trackId: number; // ID of the associated track

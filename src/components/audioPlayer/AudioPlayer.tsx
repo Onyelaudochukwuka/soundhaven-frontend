@@ -2,7 +2,7 @@ import React, { useRef, useState, useEffect, useContext, useCallback } from 'rea
 import WaveSurfer from 'wavesurfer.js';
 import RegionsPlugin from 'wavesurfer.js/dist/plugins/regions.js';
 import { Region, RegionParams, } from 'wavesurfer.js/dist/plugins/regions.js';
-import { Track } from '../../../types/types';
+import { Track, Comment } from '../../../types/types';
 import debounce from 'lodash/debounce';
 import AudioControls from './AudioControls';
 import { PlaybackContext } from '@/contexts/PlaybackContext';
@@ -10,6 +10,8 @@ import TrackInfo from './TrackInfo';
 import Modal from '../Modal';
 import { useComments } from '@/hooks/UseComments';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTracks } from '@/hooks/UseTracks';
+import { usePlayback } from '@/hooks/UsePlayback';
 
 interface AudioPlayerProps {
   track: Track;
@@ -20,10 +22,23 @@ interface AudioPlayerProps {
   volume: number;
   onVolumeChange: (speed: number) => void;
   onTogglePlay: () => void;
+  comments?: Comment[]; // Optional, only if you need to display comments within AudioPlayer
+  addMarkerAndComment: (trackId: number, time: number, commentText: string, token: string) => Promise<void>;
 }
 
 
-const AudioPlayer: React.FC<AudioPlayerProps> = ({ track, isFavorite, onToggleFavorite, playbackSpeed, onPlaybackSpeedChange, volume, onVolumeChange, onTogglePlay }) => {
+const AudioPlayer: React.FC<AudioPlayerProps> = ({ 
+    track, 
+    comments, 
+    addMarkerAndComment, 
+    onTogglePlay,
+    isFavorite,
+    onToggleFavorite,
+    playbackSpeed,
+    volume,
+
+  
+  }) => {
   const { user, token } = useAuth();
   const { isPlaying, togglePlayback } = useContext(PlaybackContext);
   const [isLoading, setIsLoading] = useState(true);
@@ -31,38 +46,32 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ track, isFavorite, onToggleFa
   const [modalOpen, setModalOpen] = useState(false);
   const [comment, setComment] = useState('');
   const [regionParams, setRegionParams] = useState(null);
-  const { comments, addComment, addMarkerAndComment, fetchCommentsAndMarkers } = useComments();
+  const { fetchTrack } = useTracks();
+  const {currentTrack} = usePlayback();
+  // const { comments, addComment, addMarkerAndComment, fetchCommentsAndMarkers } = useComments();
 
   const regionsRef = useRef(null); // Added to store the registered Regions instance
   const waveformRef = useRef(null);
   const waveSurferRef = useRef<WaveSurfer | null>(null);
 
-  // Fetches comments and markers
-  useEffect(() => {
-    if (track && track.id) {
-      fetchCommentsAndMarkers(track.id);
-    }
-  }, [track.id, fetchCommentsAndMarkers]);
+  // useEffect(() => {
+  //   // Ensure we have a valid track ID and the waveform is ready or any other conditions you deem necessary
+  //   if (track?.id && !isLoading) {
+  //     console.log(`Fetching comments and markers for trackId: ${track.id}`);
+  //     fetchCommentsAndMarkers(track.id);
+  //   }
+  // }, [track?.id, isLoading, fetchCommentsAndMarkers]);
 
-  // Renders regions on wave form
-  useEffect(() => {
-  if (comments.length > 0 && waveSurferRef.current && regionsRef.current) {
-    comments.forEach((comment) => {
-      if (comment.marker) {
-        regionsRef.current.addRegion({
-          start: comment.marker.start,
-          end: comment.marker.start + 1, // You might adjust this based on your marker's duration or visualization needs
-          color: 'rgba(255, 0, 0, 0.5)',
-          drag: false,
-          resize: false,
-          data: {
-            commentId: comment.id,
-          },
-        });
-      }
-    });
-  }
-}, [comments]);
+  // Implement this to use fetchTrack from the useTracks hook
+  // useEffect(() => {
+  //   if (track?.id) {
+  //     fetchTrack(track.id).then(fetchedTrack => {
+  //       // Use fetchedTrack as needed
+  //     }).catch(error => {
+  //       console.error('Failed to fetch track:', error);
+  //     });
+  //   }
+  // }, [track?.id, fetchTrack]);
 
   // Debounced double click handler defined with useCallback at the top level
   const debouncedHandleDoubleClick = useCallback(debounce((e) => {
@@ -77,7 +86,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ track, isFavorite, onToggleFa
 
       setRegionParams({
         id: region.id,
-        start: clickTime,
+        time: clickTime,
         color: 'rgba(255, 165, 0, 0.5)'
       });
 
@@ -118,11 +127,16 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ track, isFavorite, onToggleFa
 
     console.log("Wavesurfer instance created:", waveSurferRef.current);
 
-    waveSurferRef.current.load(`${process.env.NEXT_PUBLIC_BACKEND_URL}/${track.filePath}`);
-
+    // This worked before trying URI encoder
+    // waveSurferRef.current.load(`${process.env.NEXT_PUBLIC_BACKEND_URL}/${track.filePath}`);
+   
+    const trackUrl = encodeURI(`${process.env.NEXT_PUBLIC_BACKEND_URL}/${currentTrack.filePath}`);
+    waveSurferRef.current.load(trackUrl);
+    
     waveSurferRef.current.on('ready', () => {
       console.log('WaveSurfer is ready. Duration:', waveSurferRef.current.getDuration());
       setIsLoading(false);
+      
       if (isPlaying) {
         waveSurferRef.current.play();
       }
@@ -149,6 +163,39 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ track, isFavorite, onToggleFa
     }
   }, [track.filePath, debouncedHandleDoubleClick, isPlaying]);
 
+
+  useEffect(() => {
+    // First, check if WaveSurfer and the Regions plugin are correctly initialized
+    if (!waveSurferRef.current || !regionsRef.current) {
+      console.warn('WaveSurfer or Regions plugin not initialized yet.');
+      return;
+    }
+  
+    // console.log('WaveSurfer is ready. Duration:', waveSurferRef.current.getDuration());
+    // console.log('Comments to render as markers:', comments);
+  
+    // Clear existing regions before adding new ones to prevent duplicates
+    // regionsRef.current.clearRegions();
+  
+    // Then, iterate through comments to add markers
+    comments.forEach((comment) => {
+      if (comment.marker) {
+        console.log(`Adding region for comment ${comment.id} at time ${comment.marker.time}`);
+        regionsRef.current.addRegion({
+          start: comment.marker.time,
+          end: comment.marker.time + 1, // Adjust based on your marker's visualization needs
+          color: 'rgba(255, 0, 0, 0.5)',
+          drag: false, // Set to true if you want users to adjust marker positions
+          resize: false, // Set to true if you want users to adjust marker durations
+          data: {
+            commentId: comment.id,
+          },
+        });
+        console.log(`Region added:`, region);
+      }
+    });
+  }, [comments]); 
+
   const handleCommentSubmit = async (submittedComment) => {
     if (!user || !token) {
       console.error("User or token not available");
@@ -157,7 +204,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ track, isFavorite, onToggleFa
   
     try {
       if (regionParams) {
-        await addMarkerAndComment(track.id, user.id, submittedComment, regionParams.start, token);
+        await addMarkerAndComment(track.id, user.id, submittedComment, regionParams.time, token);
       } else {
         await addComment(track.id, user.id, submittedComment, token);
       }

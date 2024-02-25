@@ -13,6 +13,8 @@ export const CommentsProvider: FunctionComponent<CommentsProviderProps> = ({ chi
   const [comments, setComments] = useState<Comment[]>([]);
 
   const fetchCommentsAndMarkers = async (trackId: number, page: number = 1, limit: number = 10) => {
+    // console.log(`fetchCommentsAndMarkers called with trackId: ${trackId}, page: ${page}, limit: ${limit}`);
+
     if (!trackId || trackId <= 0) {
       console.error("Invalid trackId, skipping fetchCommentsAndMarkers");
       return;
@@ -20,14 +22,14 @@ export const CommentsProvider: FunctionComponent<CommentsProviderProps> = ({ chi
 
     try {
       const response = await fetch(`${backendUrl}/comments?trackId=${trackId}&page=${page}&limit=${limit}`);
-      console.log("Raw response:", response); // Debugging: Log the raw response
+      // console.log("Raw response:", response); // Debugging: Log the raw response
 
       if (!response.ok) {
         throw new Error(`Failed to fetch comments: ${response.statusText}`);
       }
 
       const comments = await response.json();
-      console.log("Parsed comments:", comments); // Debugging: Log the parsed comments
+      // console.log("Parsed comments:", comments); // Debugging: Log the parsed comments
 
       if (!Array.isArray(comments)) {
         console.error("Expected an array of comments, received:", typeof comments);
@@ -44,8 +46,9 @@ export const CommentsProvider: FunctionComponent<CommentsProviderProps> = ({ chi
         marker: comment.marker
       }));
 
-      console.log("Fetched comments and markers:", processedComments);
+      // console.log("Fetched comments and markers:", processedComments);
       setComments(processedComments);
+      // console.log(`fetchCommentsAndMarkers for trackId: ${trackId} completed`);
     } catch (error) {
       console.error("Error fetching comments and markers:", error);
     }
@@ -92,7 +95,7 @@ export const CommentsProvider: FunctionComponent<CommentsProviderProps> = ({ chi
           userId, 
           content, 
           marker: {
-            start: startTime, // Include the start time as it must be defined
+            time: startTime, // Include the start time as it must be defined
             // No need for 'end' or 'time' property if they are not used by your backend
           }
         }),

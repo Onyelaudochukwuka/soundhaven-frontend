@@ -7,6 +7,8 @@ import { CommentsContextType } from '../../types/types';
 
 export const useComments = (): CommentsContextType => {
   const context = useContext(CommentsContext);
+  // console.log('useComments hook used');
+
   if (!context) {
     throw new Error('useComments must be used within a CommentsProvider');
   }

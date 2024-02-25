@@ -1,7 +1,7 @@
 import { createContext, useContext } from 'react';
 import { Track } from '../../types/types';
 
-interface PlaybackContextValue {
+export interface PlaybackContextValue {
     isPlaying: boolean;
     currentTrack: Track | null;
     currentTrackIndex: number;
@@ -23,10 +23,4 @@ const initialPlaybackContextValue: PlaybackContextValue = {
 
 export const PlaybackContext = createContext<PlaybackContextValue>(initialPlaybackContextValue);
 
-export const usePlayback = (): PlaybackContextValue => {
-    const context = useContext(PlaybackContext);
-    if (!context) {
-        throw new Error('usePlayback must be used within a PlaybackProvider');
-    }
-    return context;
-};
+

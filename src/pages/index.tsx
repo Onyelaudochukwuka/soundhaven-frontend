@@ -3,7 +3,6 @@ import Head from 'next/head';
 import Header from '../components/layout/SidebarLeft';
 import MainContent from '../components/layout/MainContent';
 import Footer from '../components/layout/Footer';
-import { fetchTracks } from '../services/apiService';
 import { Track } from '../../types/types';
 import { useAuth } from '@/hooks/UseAuth';
 import LoginForm from '@/components/auth/LoginForm';
@@ -13,7 +12,6 @@ import NavBar from '@/components/layout/NavBar';
 import { useRouter } from 'next/router';
 
 const HomePage: React.FC = () => {
-  const [tracks, setTracks] = useState<Track[]>([]);
   const [error, setError] = useState('');
   const { user } = useAuth();
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -24,19 +22,6 @@ const HomePage: React.FC = () => {
   useEffect(() => {
     console.log("User in HomePage:", user);
   }, [user]);
-
-  const loadTracks = async () => {
-    try {
-      const fetchedTracks = await fetchTracks();
-      setTracks(fetchedTracks);
-    } catch (error) {
-      setError(error instanceof Error ? error.message : "An unexpected error occurred");
-    }
-  };
-
-  useEffect(() => {
-    loadTracks();
-  }, []);
 
   const handleRegistrationSuccess = () => {
     setRegistrationSuccess(true);
@@ -96,7 +81,7 @@ const HomePage: React.FC = () => {
 
         <Header />
         <div className="bg-red-500 p-4 text-white min-w-32">Anon&apos;s Library</div>
-        <MainContent tracks={tracks} error={error} loadTracks={loadTracks} />
+        <MainContent error={error}/>
       </div>
 
       <Modal isOpen={isModalOpen} onClose={toggleModal}>

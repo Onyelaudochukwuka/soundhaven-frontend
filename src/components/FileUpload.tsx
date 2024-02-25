@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
-import { uploadTrack } from '../services/apiService';
+import { useTracks } from '@/hooks/UseTracks';
+import { Track } from '../../types/types';
 
 interface FileUploadProps {
     onUploadSuccess: () => void;
 }
 
-const FileUpload: React.FC<FileUploadProps> = ({ onUploadSuccess }) => {
-    const [uploading, setUploading] = useState(false);
+    const FileUpload: React.FC<FileUploadProps> = ({ onUploadSuccess }) => {
+        const [uploading, setUploading] = useState(false);
+    const { uploadTrack } = useTracks(); // Use the `useTracks` hook
 
     const extractTitleFromFileName = (fileName: string) => {
         // Remove file extension and replace underscores/dashes with spaces
@@ -15,22 +17,23 @@ const FileUpload: React.FC<FileUploadProps> = ({ onUploadSuccess }) => {
 
     const handleFileUpload = async (file: File) => {
         setUploading(true);
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('name', extractTitleFromFileName(file.name));
+        
         try {
-            const formData = new FormData();
-            formData.append('file', file);
-            formData.append('name', extractTitleFromFileName(file.name)); // Extract and append title
-
-            const success = await uploadTrack(formData); // Send formData with file and title
+            const success = await uploadTrack(formData); // Use the uploadTrack function from the hook
             if (success) {
                 console.log('Track uploaded successfully');
                 onUploadSuccess();
+                // Optionally, refetch tracks to update the list
             } else {
                 console.error('Track upload failed with no error thrown');
             }
         } catch (error) {
             console.error('Error during file upload:', error);
         } finally {
-            setUploading(false); // Ensure uploading state is reset regardless of success or failure
+            setUploading(false);
         }
     };
 

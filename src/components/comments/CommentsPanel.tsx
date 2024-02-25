@@ -30,9 +30,9 @@ const CommentsPanel: React.FC<CommentsPanelProps> = ({ show, onClose, trackId })
     }
   }, [trackId]);
 
-  useEffect(() => {
-    console.log("CommentsPanel comments: ", comments);
-  }, [comments]);
+  // useEffect(() => {
+  //   console.log("CommentsPanel comments: ", comments);
+  // }, [comments]);
 
   // Submitting new comments
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {

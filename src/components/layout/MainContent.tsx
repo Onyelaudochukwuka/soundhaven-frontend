@@ -4,44 +4,34 @@ import TracksTable from '../TracksTable';
 import ErrorMessage from '../ErrorMessage';
 import AudioPlayer from '../audioPlayer/AudioPlayer';
 import CommentsPanel from '../comments/CommentsPanel';
-import { deleteTrack, fetchTracks } from '@/services/apiService';
-import { TracksContext } from '@/contexts/TracksContext';
+import { useTracks } from '@/hooks/UseTracks';
 import { PlaybackContext } from '@/contexts/PlaybackContext';
-import CommentsContext from '@/contexts/CommentsContext';
-import { Track } from '../../../types/types';
+import { Track, Comment } from '../../../types/types';
+import { useComments } from '@/hooks/UseComments';
 
 interface MainContentProps {
   error: string;
-  loadTracks: () => Promise<void>;
 }
 
-const MainContent: React.FC<MainContentProps> = ({ error, loadTracks }) => {
+const MainContent: React.FC<MainContentProps> = ({ error }) => {
   const { isPlaying, currentTrack, currentTrackIndex, togglePlayback, selectTrack } = useContext(PlaybackContext)!;
   const [showComments, setShowComments] = useState(false);
-  const { tracks, setTracks } = useContext(TracksContext);
   const selectedTrackId = currentTrack?.id ?? 0;
   const [fetchError, setFetchError] = useState<string | null>(null);
-
-  if (!tracks) {
-    console.error('TracksContext not found');
-    return null;
-  }
+  const { comments, fetchCommentsAndMarkers, addMarkerAndComment, addComment } = useComments();
+  const [isLoading, setIsLoading] = useState(false);
+  const { tracks, fetchTracks, deleteTrack, updateTrack } = useTracks();
 
   useEffect(() => {
-    (async () => {
-      try {
-        const fetchedTracks = await fetchTracks();
-        setTracks(fetchedTracks);
-        setFetchError(null); // Reset error state on successful fetch
-      } catch (error) {
-        console.error('Failed to fetch tracks:', error);
-        setFetchError('Failed to load tracks. Please try again later.');
-      }
-    })();
-  }, []);
+    if (currentTrack?.id) {
+      fetchCommentsAndMarkers(currentTrack.id);
+    }
+  }, [currentTrack, fetchCommentsAndMarkers]);
 
+  // Update the handleUploadSuccess function to use fetchTracks directly
   const handleUploadSuccess = async () => {
-    await loadTracks();
+    console.log('MainContent: Handling upload success.');
+    await fetchTracks();
   };
 
   const handleSelectTrack = (trackId: number, trackFilePath: string, trackIndex: number) => {
@@ -103,11 +93,21 @@ const MainContent: React.FC<MainContentProps> = ({ error, loadTracks }) => {
     setShowComments(!showComments);
   };
 
+  useEffect(() => {
+    if (currentTrack?.id) {
+      fetchCommentsAndMarkers(currentTrack.id);
+    }
+  }, [currentTrack, fetchCommentsAndMarkers]);
 
-  console.log('Rendering AudioPlayer with track:', currentTrack);
+
+  // console.log('Rendering AudioPlayer with track:', currentTrack);
 
   return (
     <main className="flex flex-col p-4 mx-auto">
+      {/* Button to manually fetch tracks */}
+      {/* <button onClick={handleManualFetch} className="mb-4 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+        Fetch Tracks Manually
+      </button> */}
       <button onClick={toggleComments} className="toggle-comments-btn absolute">
         {showComments ? 'Close Comments' : 'Open Comments'}
       </button>
@@ -125,23 +125,29 @@ const MainContent: React.FC<MainContentProps> = ({ error, loadTracks }) => {
               track={currentTrack}
               isPlaying={isPlaying}
               onTogglePlay={togglePlayback}
+              comments={comments}
+              addMarkerAndComment={addMarkerAndComment}
             />
           </div>
         )}
 
       </div>
       <FileUpload onUploadSuccess={handleUploadSuccess} />
-      {tracks.length > 0 ? (
-        <TracksTable
-          onDelete={deleteTrack}
-          onSelectTrack={handleSelectTrack}
-          onUpdate={handleUpdateTrack}
-        />
-      ) : (
-        <p>No tracks available</p>
-      )}
+      <TracksTable
+        tracks={tracks}
+        onDelete={deleteTrack}
+        onSelectTrack={handleSelectTrack}
+        onUpdate={updateTrack}
+      />
+      {/* <div className="flex flex-col"> */}
       {currentTrack?.id && showComments && (
-        <CommentsPanel trackId={currentTrack.id} show={showComments} onClose={toggleComments} />
+        <CommentsPanel 
+          trackId={currentTrack.id} 
+          show={showComments} 
+          onClose={toggleComments} 
+          comments={comments}
+          addComment={addComment}
+        />
       )}
 
     </main>
