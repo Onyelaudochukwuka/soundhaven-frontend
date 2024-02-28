@@ -27,7 +27,7 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, children }) => {
   if (!shouldRender) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center">
+    <div className="fixed z-50 inset-0 bg-black bg-opacity-50 flex justify-center items-center">
       <div className="bg-white p-4 rounded-lg shadow-lg max-w-lg w-full">
         <button onClick={handleClose} className="text-red-500 float-right font-semibold">
           X

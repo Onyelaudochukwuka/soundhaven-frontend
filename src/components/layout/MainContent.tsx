@@ -22,12 +22,6 @@ const MainContent: React.FC<MainContentProps> = ({ error }) => {
   const [isLoading, setIsLoading] = useState(false);
   const { tracks, fetchTracks, deleteTrack, updateTrack } = useTracks();
 
-  useEffect(() => {
-    if (currentTrack?.id) {
-      fetchCommentsAndMarkers(currentTrack.id);
-    }
-  }, [currentTrack, fetchCommentsAndMarkers]);
-
   // Update the handleUploadSuccess function to use fetchTracks directly
   const handleUploadSuccess = async () => {
     console.log('MainContent: Handling upload success.');
@@ -92,13 +86,6 @@ const MainContent: React.FC<MainContentProps> = ({ error }) => {
   const toggleComments = () => {
     setShowComments(!showComments);
   };
-
-  useEffect(() => {
-    if (currentTrack?.id) {
-      fetchCommentsAndMarkers(currentTrack.id);
-    }
-  }, [currentTrack, fetchCommentsAndMarkers]);
-
 
   // console.log('Rendering AudioPlayer with track:', currentTrack);
 

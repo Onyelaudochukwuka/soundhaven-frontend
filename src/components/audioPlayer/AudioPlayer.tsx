@@ -1,17 +1,21 @@
-import React, { useRef, useState, useEffect, useContext, useCallback } from 'react';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
 import WaveSurfer from 'wavesurfer.js';
 import RegionsPlugin from 'wavesurfer.js/dist/plugins/regions.js';
+
 import { Region, RegionParams, } from 'wavesurfer.js/dist/plugins/regions.js';
-import { Track, Comment } from '../../../types/types';
+import { Track, Comment, Marker } from '../../../types/types';
+
 import debounce from 'lodash/debounce';
+
 import AudioControls from './AudioControls';
-import { PlaybackContext } from '@/contexts/PlaybackContext';
 import TrackInfo from './TrackInfo';
 import Modal from '../Modal';
+
 import { useComments } from '@/hooks/UseComments';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTracks } from '@/hooks/UseTracks';
 import { usePlayback } from '@/hooks/UsePlayback';
+
 
 interface AudioPlayerProps {
   track: Track;
@@ -22,15 +26,11 @@ interface AudioPlayerProps {
   volume: number;
   onVolumeChange: (speed: number) => void;
   onTogglePlay: () => void;
-  comments?: Comment[]; // Optional, only if you need to display comments within AudioPlayer
-  addMarkerAndComment: (trackId: number, time: number, commentText: string, token: string) => Promise<void>;
 }
 
 
 const AudioPlayer: React.FC<AudioPlayerProps> = ({ 
     track, 
-    comments, 
-    addMarkerAndComment, 
     onTogglePlay,
     isFavorite,
     onToggleFavorite,
@@ -40,38 +40,31 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
   
   }) => {
   const { user, token } = useAuth();
-  const { isPlaying, togglePlayback } = useContext(PlaybackContext);
+  const { currentTrack, isPlaying, togglePlayback } = usePlayback();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [comment, setComment] = useState('');
   const [regionParams, setRegionParams] = useState(null);
   const { fetchTrack } = useTracks();
-  const {currentTrack} = usePlayback();
-  // const { comments, addComment, addMarkerAndComment, fetchCommentsAndMarkers } = useComments();
+  const { comments, addMarkerAndComment, fetchCommentsAndMarkers } = useComments();
 
-  const regionsRef = useRef(null); // Added to store the registered Regions instance
+  const regionsRef = useRef(null); 
   const waveformRef = useRef(null);
   const waveSurferRef = useRef<WaveSurfer | null>(null);
 
-  // useEffect(() => {
-  //   // Ensure we have a valid track ID and the waveform is ready or any other conditions you deem necessary
-  //   if (track?.id && !isLoading) {
-  //     console.log(`Fetching comments and markers for trackId: ${track.id}`);
-  //     fetchCommentsAndMarkers(track.id);
-  //   }
-  // }, [track?.id, isLoading, fetchCommentsAndMarkers]);
+  const [waveSurferReady, setWaveSurferReady] = useState(false);
 
-  // Implement this to use fetchTrack from the useTracks hook
-  // useEffect(() => {
-  //   if (track?.id) {
-  //     fetchTrack(track.id).then(fetchedTrack => {
-  //       // Use fetchedTrack as needed
-  //     }).catch(error => {
-  //       console.error('Failed to fetch track:', error);
-  //     });
-  //   }
-  // }, [track?.id, fetchTrack]);
+  useEffect(() => {
+
+    console.log(`useEffect called with trackId: ${track.id}, isLoading: ${isLoading}, fetchCommentsAndMarkers: ${fetchCommentsAndMarkers}`);
+
+    // Ensure we have a valid track ID and the waveform is ready or any other conditions you deem necessary
+    if (track?.id && !isLoading) {
+      console.log(`Fetching comments and markers for trackId: ${track.id}`);
+      fetchCommentsAndMarkers(track.id);
+    }
+  }, [track?.id, isLoading]);
 
   // Debounced double click handler defined with useCallback at the top level
   const debouncedHandleDoubleClick = useCallback(debounce((e) => {
@@ -115,14 +108,15 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
   // Main hook for waveform initialization
   useEffect(() => {
     if (waveformRef.current) {
+      setIsLoading(true);
       waveSurferRef.current = WaveSurfer.create({
         container: waveformRef.current,
         waveColor: 'violet',
         progressColor: 'purple',
         backend: 'WebAudio',
-        plugins: [
-          RegionsPlugin.create(),
-        ]
+        // plugins: [
+        //   RegionsPlugin.create(),
+        // ]
       });
 
     console.log("Wavesurfer instance created:", waveSurferRef.current);
@@ -134,9 +128,10 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
     waveSurferRef.current.load(trackUrl);
     
     waveSurferRef.current.on('ready', () => {
+      setIsLoading(false); // Set loading state to false when WaveSurfer is ready
+      setWaveSurferReady(true);
       console.log('WaveSurfer is ready. Duration:', waveSurferRef.current.getDuration());
-      setIsLoading(false);
-      
+
       if (isPlaying) {
         waveSurferRef.current.play();
       }
@@ -161,40 +156,45 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
         waveformElement.removeEventListener('dblclick', debouncedHandleDoubleClick);
       };
     }
-  }, [track.filePath, debouncedHandleDoubleClick, isPlaying]);
+  }, [track.filePath, isPlaying]);
 
-
+    // Implement this to use fetchTrack from the useTracks hook
   useEffect(() => {
-    // First, check if WaveSurfer and the Regions plugin are correctly initialized
-    if (!waveSurferRef.current || !regionsRef.current) {
-      console.warn('WaveSurfer or Regions plugin not initialized yet.');
-      return;
+    if (track?.id) {
+      fetchTrack(track.id).then(fetchedTrack => {
+        // Use fetchedTrack as needed
+      }).catch(error => {
+        console.error('Failed to fetch track:', error);
+      });
     }
+  }, [track?.id, fetchTrack]);
+
+  // Fetch comments and markers conditionally
+  useEffect(() => {
+    if (track?.id && waveSurferReady) { 
+      fetchCommentsAndMarkers(track.id);
+    }
+  }, [track?.id, waveSurferReady]); 
   
-    // console.log('WaveSurfer is ready. Duration:', waveSurferRef.current.getDuration());
-    // console.log('Comments to render as markers:', comments);
-  
-    // Clear existing regions before adding new ones to prevent duplicates
-    // regionsRef.current.clearRegions();
-  
-    // Then, iterate through comments to add markers
+  // Add markers from comments
+  useEffect(() => {
+    if (!waveSurferRef.current || !regionsRef.current) return;
+
+    regionsRef.current.clearRegions();
+
     comments.forEach((comment) => {
       if (comment.marker) {
-        console.log(`Adding region for comment ${comment.id} at time ${comment.marker.time}`);
         regionsRef.current.addRegion({
           start: comment.marker.time,
-          end: comment.marker.time + 1, // Adjust based on your marker's visualization needs
+          end: comment.marker.time + 1, // Adjust if needed
           color: 'rgba(255, 0, 0, 0.5)',
-          drag: false, // Set to true if you want users to adjust marker positions
-          resize: false, // Set to true if you want users to adjust marker durations
-          data: {
-            commentId: comment.id,
-          },
+          drag: false,
+          resize: false,
+          data: { commentId: comment.id },
         });
-        console.log(`Region added:`, region);
       }
     });
-  }, [comments]); 
+  }, [comments]);
 
   const handleCommentSubmit = async (submittedComment) => {
     if (!user || !token) {
@@ -204,15 +204,17 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
   
     try {
       if (regionParams) {
-        await addMarkerAndComment(track.id, user.id, submittedComment, regionParams.time, token);
+        const startTime = regionParams.time;
+        await addMarkerAndComment(track.id, user.id, submittedComment, startTime, token);
       } else {
-        await addComment(track.id, user.id, submittedComment, token);
+        // Avoid calling addMarkerAndComment if there's no marker
+        console.log("No marker associated with this comment (skipping marker creation).");
       }
       console.log("Comment (and potentially marker) added successfully");
       // Reset modal, comment input, and potentially fetch new comments/markers
       setModalOpen(false);
       setComment('');
-      fetchCommentsAndMarkers(track.id); // Refresh comments and markers to reflect the new addition
+      // fetchCommentsAndMarkers(track.id); // Refresh comments and markers to reflect the new addition
     } catch (error) {
       console.error("Error submitting comment (and marker):", error);
     }
@@ -299,7 +301,8 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
         </div>
 
       )}
-      {modalOpen && (
+
+{modalOpen && (
   <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)}>
     <form onSubmit={(e) => {
       e.preventDefault();

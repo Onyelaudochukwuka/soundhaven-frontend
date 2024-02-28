@@ -10,7 +10,10 @@ interface CommentsProviderProps {
 }
 
 export const CommentsProvider: FunctionComponent<CommentsProviderProps> = ({ children }) => {
+  const [newCommentInput, setNewCommentInput] = useState('');
   const [comments, setComments] = useState<Comment[]>([]);
+  const [markers, setMarkers] = useState<Marker[]>([]);
+
 
   const fetchCommentsAndMarkers = async (trackId: number, page: number = 1, limit: number = 10) => {
     // console.log(`fetchCommentsAndMarkers called with trackId: ${trackId}, page: ${page}, limit: ${limit}`);
@@ -28,31 +31,76 @@ export const CommentsProvider: FunctionComponent<CommentsProviderProps> = ({ chi
         throw new Error(`Failed to fetch comments: ${response.statusText}`);
       }
 
-      const comments = await response.json();
-      // console.log("Parsed comments:", comments); // Debugging: Log the parsed comments
-
-      if (!Array.isArray(comments)) {
-        console.error("Expected an array of comments, received:", typeof comments);
+      const fetchedComments = await response.json();
+      if (!Array.isArray(fetchedComments)) {
+        console.error("Expected an array of comments, received:", typeof fetchedComments);
         return;
       }
 
-      // Process each comment to include userName directly and handle marker data
-      // Note: You already have userName from the API, but this step is to demonstrate processing if needed
-      const processedComments = comments.map(comment => ({
-        ...comment,
-        userName: comment.user?.name,
-        // No need to adjust marker data here as it's already handled by your API
-        // This step is kept for demonstration if further processing is needed
-        marker: comment.marker
-      }));
+      setComments(fetchedComments); // Update comments state
 
-      // console.log("Fetched comments and markers:", processedComments);
-      setComments(processedComments);
-      // console.log(`fetchCommentsAndMarkers for trackId: ${trackId} completed`);
+      // Extract markers from fetched comments
+      const extractedMarkers = fetchedComments
+        .filter(comment => comment.marker) // Ensure the comment has a marker
+        .map(comment => comment.marker); // Extract the marker
+
+      setMarkers(extractedMarkers); // Update markers state
     } catch (error) {
       console.error("Error fetching comments and markers:", error);
     }
   };
+
+
+  const addMarkerAndComment = async (trackId: number, userId: number, content: string, start: number, token: string) => {
+    try {
+      const response = await fetch(`${backendUrl}/comments/with-marker`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          trackId,
+          userId,
+          content,
+          start,
+        }),
+      });
+  
+      if (!response.ok) {
+        const errorData = await response.json(); // Parse error details if the response wasn't OK
+        console.error("Error adding comment and marker:", errorData);
+        throw new Error(`HTTP error! status: ${response.status}, message: ${errorData.message}`);
+      }
+  
+      const newComment = await response.json() as Comment; // Casting the response to match the Comment type
+      console.log("New comment and potentially a marker added:", newComment);
+  
+        // Update comments state to include the new comment
+    setComments((prevComments: Comment[]) => [...prevComments, newComment]);
+
+    // Check if the marker data exists and has all required fields before updating the markers state
+    if (newComment.marker && typeof newComment.marker.id === 'number' && typeof newComment.marker.time === 'number') {
+      console.log("Adding new marker to state:", newComment.marker);
+      setMarkers((prevMarkers) => [...prevMarkers, {
+        id: newComment.marker!.id,
+        time: newComment.marker!.time,
+        commentId: newComment.id,
+        trackId: newComment.trackId,
+        createdAt: newComment.createdAt,
+        comment: newComment,
+      }]);
+    } else {
+      console.warn('Marker data is missing for the new comment:', newComment.id);
+    }
+
+    await fetchCommentsAndMarkers(trackId);
+
+  } catch (error) {
+    console.error("Error adding comment and marker:", error);
+  }
+};
+  
 
   const addComment = async (trackId: number, userId: number, content: string, token: string) => {
     try {
@@ -82,42 +130,6 @@ export const CommentsProvider: FunctionComponent<CommentsProviderProps> = ({ chi
     }
   };  
 
-  const addMarkerAndComment = async (trackId: number, userId: number, content: string, startTime: number, token: string) => {
-    try {
-      const response = await fetch(`${backendUrl}/comments`, { // Adjust if you have a specific endpoint for comments with markers
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({ 
-          trackId, 
-          userId, 
-          content, 
-          marker: {
-            time: startTime, // Include the start time as it must be defined
-            // No need for 'end' or 'time' property if they are not used by your backend
-          }
-        }),
-      });
-  
-      if (!response.ok) {
-        const errorData = await response.json(); // Parse error details only if the response wasn't OK
-        console.error("Error adding comment and marker:", errorData);
-        throw new Error(`HTTP error! status: ${response.status}, message: ${errorData.message}`);
-      }
-  
-      const newCommentAndMarker = await response.json(); // Safely parse the successful response
-      console.log("New comment and marker added:", newCommentAndMarker);
-  
-      // Update the state to reflect the newly added comment and marker
-      // Ensure this logic aligns with how you manage state in your application
-      setComments(prevComments => [...prevComments, { ...newCommentAndMarker, createdAt: new Date(newCommentAndMarker.createdAt).toISOString() }]);
-    } catch (error) {
-      console.error("Error adding comment and marker:", error);
-    }
-  };
-
   const editComment = async (commentId, content) => {
     try {
       const response = await fetch(`${backendUrl}/comments/${commentId}`, {
@@ -145,8 +157,43 @@ export const CommentsProvider: FunctionComponent<CommentsProviderProps> = ({ chi
     }
   };
 
+
+  // const fetchCommentsAndMarkers = async (trackId: number, page: number = 1, limit: number = 10) => {
+  //   if (!trackId || trackId <= 0) {
+  //     console.error("Invalid trackId, skipping fetchCommentsAndMarkers");
+  //     return;
+  //   }
+  
+  //   try {
+  //     const response = await fetch(`${backendUrl}/comments?trackId=${trackId}&page=${page}&limit=${limit}`);
+  
+  //     if (!response.ok) {
+  //       const errorMessage = `Failed to fetch comments: ${response.statusText}`;
+  //       console.error(errorMessage);
+  //       throw new Error(errorMessage);
+  //     }
+  
+  //     const fetchedComments = await response.json();
+  //     if (!Array.isArray(fetchedComments)) {
+  //       console.error("Expected an array of comments, received:", typeof fetchedComments);
+  //       return;
+  //     }
+  
+  //     setComments(fetchedComments); // Update comments state
+  
+  //     // Extract markers from fetched comments
+  //     const extractedMarkers = fetchedComments
+  //       .filter(comment => comment.marker) // Ensure the comment has a marker
+  //       .map(comment => comment.marker); // Extract the marker
+  
+  //     setMarkers(extractedMarkers); // Update markers state
+  //   } catch (error) {
+  //     console.error("Error fetching comments and markers:", error.message, error.stack);
+  //   }
+  // };
+
   return (
-    <CommentsContext.Provider value={{ comments, fetchCommentsAndMarkers, addComment, addMarkerAndComment, editComment: async () => { }, deleteComment: async () => { } }}>
+    <CommentsContext.Provider value={{ newCommentInput, setNewCommentInput, comments, setComments, fetchCommentsAndMarkers, addComment, addMarkerAndComment, editComment: async () => { }, deleteComment: async () => { } }}>
       {children}
     </CommentsContext.Provider>
   );

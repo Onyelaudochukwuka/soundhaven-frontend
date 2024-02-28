@@ -116,6 +116,8 @@ export interface User {
   };
 
   export interface CommentsContextType {
+    newCommentInput: string;
+    setNewCommentInput: React.Dispatch<React.SetStateAction<string>>;
     comments: Comment[];
     setComments: React.Dispatch<React.SetStateAction<Comment[]>>;    
     fetchComments: (trackId: number, page?: number, limit?: number) => Promise<void>;
