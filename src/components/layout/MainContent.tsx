@@ -1,4 +1,4 @@
-import React, { useState, useContext, useEffect } from 'react';
+import React, { useState, useContext, useRef } from 'react';
 import FileUpload from '../FileUpload';
 import TracksTable from '../TracksTable';
 import ErrorMessage from '../ErrorMessage';
@@ -8,6 +8,8 @@ import { useTracks } from '@/hooks/UseTracks';
 import { PlaybackContext } from '@/contexts/PlaybackContext';
 import { Track, Comment } from '../../../types/types';
 import { useComments } from '@/hooks/UseComments';
+import WaveSurfer from 'wavesurfer.js';
+import RegionsPlugin from 'wavesurfer.js/dist/plugins/regions.js';
 
 interface MainContentProps {
   error: string;
@@ -18,9 +20,25 @@ const MainContent: React.FC<MainContentProps> = ({ error }) => {
   const [showComments, setShowComments] = useState(false);
   const selectedTrackId = currentTrack?.id ?? 0;
   const [fetchError, setFetchError] = useState<string | null>(null);
-  const { comments, fetchCommentsAndMarkers, addMarkerAndComment, addComment } = useComments();
+
+  const { 
+    comments, 
+    fetchCommentsAndMarkers, 
+    fetchComments, 
+    addMarkerAndComment, 
+    addComment, 
+    handleSelectComment 
+  } = useComments();
+  
   const [isLoading, setIsLoading] = useState(false);
   const { tracks, fetchTracks, deleteTrack, updateTrack } = useTracks();
+
+  const regionsRef = useRef<RegionsPlugin | null>(null);
+  const waveSurferRef = useRef<WaveSurfer | null>(null);
+
+  const [selectedCommentId, setSelectedCommentId] = useState<number | null>(null);
+
+  
 
   // Update the handleUploadSuccess function to use fetchTracks directly
   const handleUploadSuccess = async () => {
@@ -89,6 +107,15 @@ const MainContent: React.FC<MainContentProps> = ({ error }) => {
 
   // console.log('Rendering AudioPlayer with track:', currentTrack);
 
+  // Delete??
+  const handleCommentClick = (commentId: number) => {
+    setSelectedCommentId(commentId);
+  };
+
+  const handleCommentSelected = (commentId: number) => {
+    setSelectedCommentId(commentId);
+  };
+
   return (
     <main className="flex flex-col p-4 mx-auto">
       {/* Button to manually fetch tracks */}
@@ -114,7 +141,12 @@ const MainContent: React.FC<MainContentProps> = ({ error }) => {
               onTogglePlay={togglePlayback}
               comments={comments}
               addMarkerAndComment={addMarkerAndComment}
-            />
+              setSelectedCommentId={setSelectedCommentId}
+              handleCommentClick={handleCommentClick} 
+              onSelectComment={handleCommentSelected}
+              showComments={showComments}
+              toggleComments={toggleComments}
+              />
           </div>
         )}
 
@@ -134,7 +166,11 @@ const MainContent: React.FC<MainContentProps> = ({ error }) => {
           onClose={toggleComments} 
           comments={comments}
           addComment={addComment}
-        />
+          regionsRef={regionsRef}
+          waveSurferRef={waveSurferRef}
+          handleCommentClick={handleCommentClick}
+          selectedCommentId={selectedCommentId}
+          />
       )}
 
     </main>

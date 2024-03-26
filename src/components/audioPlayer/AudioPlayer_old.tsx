@@ -1,10 +1,11 @@
-import React, { useRef, useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
 
 import WaveSurfer from 'wavesurfer.js';
 import RegionsPlugin from 'wavesurfer.js/dist/plugins/regions.js';
-import { RegionParams } from 'wavesurfer.js/src/plugin/regions';
+import { Region as WaveSurferRegion } from 'wavesurfer.js/dist/plugins/regions.js';
 
-import { Track, _Comment, Marker } from '../../../types/types';
+import { Region, RegionParams, } from 'wavesurfer.js/dist/plugins/regions.js';
+import { Track, Comment, Marker } from '../../../types/types';
 
 import debounce from 'lodash/debounce';
 
@@ -17,8 +18,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useTracks } from '@/hooks/UseTracks';
 import { usePlayback } from '@/hooks/UsePlayback';
 
-import { CustomRegionWrapper } from './CustomRegion';
-
 
 interface AudioPlayerProps {
   track: Track;
@@ -29,9 +28,6 @@ interface AudioPlayerProps {
   volume: number;
   onVolumeChange: (speed: number) => void;
   onTogglePlay: () => void;
-  onSelectComment: (commentId: number) => void;
-  showComments: boolean;
-  toggleComments: () => void;
 }
 
 
@@ -42,54 +38,26 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
   onToggleFavorite,
   playbackSpeed,
   volume,
-  onSelectComment,
-  toggleComments,
-  showComments,
+
+
 }) => {
   const { user, token } = useAuth();
   const { currentTrack, isPlaying, togglePlayback } = usePlayback();
-
   const [isLoading, setIsLoading] = useState(true);
-  const [isLoadingMarkers, setIsLoadingMarkers] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
   const [modalOpen, setModalOpen] = useState(false);
   const [comment, setComment] = useState('');
-  const [regionParams, setRegionParams] = useState<RegionParams | null>(null);
+  const [regionParams, setRegionParams] = useState(null);
   const { fetchTrack } = useTracks();
+  const { comments, markers, setMarkers, addMarkerAndComment, fetchCommentsAndMarkers, selectedCommentId, setSelectedCommentId } = useComments();
 
-  const regionsRef = useRef<RegionsPlugin | null>(null);
-  const waveformRef = useRef<HTMLDivElement | null>(null);
+  const regionsRef = useRef(null);
+  const waveformRef = useRef(null);
   const waveSurferRef = useRef<WaveSurfer | null>(null);
 
   const [waveSurferReady, setWaveSurferReady] = useState(false);
 
-  const selectedRegionIdRef = useRef(null);
-
-  const {
-    comments,
-    markers,
-    setMarkers,
-    addMarkerAndComment,
-    fetchCommentsAndMarkers,
-    selectedCommentId,
-    setSelectedCommentId,
-    selectedRegionId,
-    setSelectedRegionId,
-    regionCommentMap,
-    setRegionCommentMap,
-  } = useComments(waveSurferRef, regionsRef);
-
-  console.log("Markers in AudioPlayer, after destruc useComments:•", markers);
-
-  const customRegionsRef = useRef<Map<string, CustomRegionWrapper>>(new Map());
-
-  const onSelectRegion = useCallback((marker: Marker) => {
-    // Logic to select the associated comment and update the UI accordingly
-    setSelectedCommentId(marker.commentId);
-  }, []);
-
-  // console.log("Region-Comment Map in AudioPlayer:", regionCommentMap);
+  const [selectedRegionId, setSelectedRegionId] = useState(null);
 
   // Debounced double click handler defined with useCallback at the top level
   const debouncedHandleDoubleClick = useCallback(debounce((e) => {
@@ -107,24 +75,13 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
 
       setRegionParams({
         id: region.id,
-        start: clickTime,
-        end: clickTime + 1,
+        time: clickTime,
         color: 'rgba(255, 165, 0, 0.5)'
       });
 
       setModalOpen(true);
     }
   }, 300), [setRegionParams, setModalOpen]);
-
-  const handleRegionClick = useCallback((regionId) => {
-    const commentId = regionCommentMap[regionId];
-    if (commentId) {
-      onSelectComment(commentId); // Assume onSelectComment updates the selectedCommentId in shared state/context
-      if (!showComments) {
-        toggleComments(); // This function should change the state to make CommentsPanel visible
-      }
-    }
-  }, [regionCommentMap, onSelectComment, showComments, toggleComments]);
 
   // Disables spacebar playing/pausing audio when comment modal is open.
   useEffect(() => {
@@ -179,68 +136,26 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
         setIsLoading(false); // Set loading state to false when WaveSurfer is ready
         setWaveSurferReady(true);
         console.log('WaveSurfer is ready. Duration:', ws.getDuration());
-
+  
         // Listener for region clicks
         regionsPlugin.on('region-clicked', (region, event) => {
           event.stopPropagation(); // prevent triggering click on the waveform
-          // console.log('Region clicked. Region.id:', region.id);
-          console.log('Region clicked. Region:•', region);
-          console.log('Region id:•', region.id);
-
-          const markerData = region.data as Marker;
-          console.log('Marker data:', markerData);
-
-          const waveSurferRegionID = region.id;
-          console.log('waveSurferRegionID in region-clicked:•', waveSurferRegionID);
-
-          const commentId = regionCommentMap[waveSurferRegionID];
-          console.log('Comment ID (from map) in region-clicked:•', commentId);
-          console.log('regionCommentMap in region-clicked:•', regionCommentMap);
-
-          setSelectedCommentId(commentId || null);
-          setSelectedRegionId(region.id);
-          console.log('Updated selectedCommentId:•', commentId || null);
-          console.log('Updated selectedRegionId:•', region.id);
-
-          // If comments panel is not shown, open it
-          if (!showComments) {
-            toggleComments();
+          console.log('Region clicked:', region.id);
+  
+          // Logic for deselecting any previously selected region and highlighting the clicked region
+          if (selectedRegionId) {
+            const prevRegion = regionsRef.current?.regions[selectedRegionId];
+            if (prevRegion) {
+              prevRegion.setOptions({ color: 'rgba(255, 0, 0, 0.5)' }); // Reset previous region color
+            }
           }
-
-            // If there is a previously selected region
-            if (selectedRegionIdRef.current) {
-              console.log('Regions:', regionsRef.current?.regions);
-              console.log('Previous selectedRegionId:', selectedRegionIdRef.current);
-
-              const prevRegionIndex = regionsRef.current?.regions.findIndex((region) => region.id === selectedRegionIdRef.current);
-              const prevRegion = regionsRef.current?.regions[prevRegionIndex];
-
-              console.log('Previous region:', prevRegion);
-
-              if (prevRegion) {
-                prevRegion.setOptions({ color: 'rgba(255, 0, 0, 0.5)' }); // Reset previous region color
-                // console.log('Previous region color changed:', region.id, region.color);
-              }
-            }
-
-            // Highlight the clicked region and update the selected region only if it's different from the current one
-            if (selectedRegionIdRef.current !== region.id) {
-              region.setOptions({ color: 'rgba(0, 255, 0, 0.7)' }); // Change color
-              // console.log('Current region color changed:', region.id, region.color);
-
-              selectedRegionIdRef.current = region.id; // Update state to reflect the newly selected region
-
-            } else {
-              // If the same region is clicked again, reset its color to deselect it and update the selected region to null
-              region.setOptions({ color: 'rgba(255, 0, 0, 0.5)' }); // Reset region color
-              // console.log('Current region color changed:', region.id, region.color);
-
-              selectedRegionIdRef.current = null; // Update state to reflect that no region is selected
-            }
-            console.log('New selectedRegionId:', selectedRegionIdRef.current);
-
-            // Optional: Perform actions based on the selected region, such as displaying a comment related to this marker
-          });
+  
+          // Highlight the clicked region
+          region.setOptions({ color: 'rgba(0, 255, 0, 0.7)' }); // Change color
+          setSelectedRegionId(region.id); // Update state to reflect the newly selected region
+  
+          // Optional: Perform actions based on the selected region, such as displaying a comment related to this marker
+        });
       });
 
       ws.on('error', (error) => {
@@ -257,11 +172,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
         waveformElement.removeEventListener('dblclick', debouncedHandleDoubleClick);
       };
     }
-  }, [track.filePath, debouncedHandleDoubleClick]);
-
-  useEffect(() => {
-    console.log('Selected Comment ID:', selectedCommentId);
-  }, [selectedCommentId]);
+}, [track.filePath, debouncedHandleDoubleClick, selectedRegionId]);
 
   // Implement this to use fetchTrack from the useTracks hook
   useEffect(() => {
@@ -274,87 +185,81 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
     }
   }, [track?.id, fetchTrack]);
 
-  const updateMarkerFromRegion = (marker: Marker, region: any): Marker => {
-    return {
-      ...marker,
-      waveSurferRegionID: region.id,
-      time: region.start,
+  const handleRegionClick = useCallback((commentId, regionId) => {
+    // if (!regionsRef.current) {
+    //    return; 
+    // }
 
-      // Potential Updates:
-      end: region.end, // Update the marker's end time if meaningful in your application
+    console.log('Entered handleRegionClick, regionId:', regionId);
+    console.log('regionsRef.current:', regionsRef.current);
+    console.log('regionsRef.current.regions:', regionsRef.current.regions);
 
-      data: {
-        ...marker.data, // Spread existing data to preserve
-        customColor: region.color,  // Sync color changes  
-        isDraggable: region.drag,   // Update draggable property
-        isResizable: region.resize  // Update resizable property
+    // Update selected region state
+    setSelectedRegionId(regionId);
+
+    // Deselect any previously selected region
+    if (selectedRegionId) {
+      const previousRegion = regionsRef.current!.regions[selectedRegionId];
+      if (previousRegion) {
+        previousRegion.setOptions({
+          color: 'rgba(255, 0, 0, 0.5)'
+        }); // Default color
       }
-    };
-  };
+    }
+
+    // Highlight the clicked region
+    const clickedRegion = regionsRef.current!.regions[regionId];
+    if (clickedRegion) {
+      console.log('Region before color change:', clickedRegion) // Log region object
+      clickedRegion.setOptions({ color: 'rgba(0, 0, 0, 0.7)' }); // Highlight color 
+      console.log('Region after color change:', clickedRegion) // Log again 
+    }
+
+    console.log('Marker clicked:', commentId, regionId);
+
+    setSelectedRegionId(regionId);
+    setSelectedCommentId(commentId);
+  }, [selectedRegionId, setSelectedRegionId, setSelectedCommentId]);
 
   // useEffect for loading regions once WaveSurfer is ready and comments/markers have been fetched
-  const loadRegions = useMemo(() => () => {
-    if (waveSurferReady && regionsRef.current && markers.length > 0) {
-      // Clear any existing regions or custom region wrappers
-      regionsRef.current.clearRegions();
-      customRegionsRef.current.clear();
-
-      markers.forEach(marker => {
-        // Define region parameters
-        const regionParams = {
-          start: marker.time,
-          end: marker.time + 0.5,
-          color: 'rgba(255, 0, 0, 0.5)',
-          drag: false,
-          resize: false,
-        };
-
-        // Add region to WaveSurfer instance
-        const region = regionsRef.current.addRegion(regionParams);
-
-        // Wrap region with CustomRegionWrapper and pass onSelectRegion
-        const customRegion = new CustomRegionWrapper(region, marker, onSelectRegion);
-
-        // Store custom region wrapper for later use
-        customRegionsRef.current.set(region.id, customRegion);
-      });
-    }
-  }, [waveSurferReady, markers, onSelectRegion]);
-
   useEffect(() => {
-    loadRegions(); // Call the memoized function to load regions
+    const loadRegions = () => {
+      if (waveSurferReady && regionsRef.current && markers.length > 0) {
+        console.log('WaveSurfer is ready. Loading markers...');
 
-    console.log('regionCommentMap in useEffect loadRegions:', regionCommentMap);
+        regionsRef.current.clearRegions(); // Clear existing regions before adding new ones
 
-    return () => {
-      if (regionsRef.current) {
-        regionsRef.current.clearRegions();
+        markers.forEach(marker => {
+          console.log(`Adding marker at time: ${marker.time} with id: ${marker.id}`);
+          regionsRef.current.addRegion({
+            start: marker.time,
+            end: marker.time + 0.5, // Adjust based on your needs
+            color: 'rgba(255, 0, 0, 0.5)',
+            drag: false,
+            resize: false,
+            data: { id: marker.id }, // Ensure each marker has a unique identifier
+          });
+        });
       }
     };
-  }, [loadRegions, regionCommentMap]);
+
+    loadRegions(); // Call the function to load regions
+
+    // This cleanup function is called when the component unmounts or when the dependencies change
+    return () => {
+      if (regionsRef.current) {
+        regionsRef.current.clearRegions(); // Clear all regions when the waveform is reloaded or component unmounts
+      }
+    };
+  }, [waveSurferReady, markers]);
 
   useEffect(() => {
     if (track.id && !isLoading) {
       fetchCommentsAndMarkers(track.id)
-        .then(() => {
-          console.log('Comments and markers fetched successfully.•');
-          console.log('Markers:•', markers); // Log the markers array
-          // Populate regionCommentMap here
-          const newRegionCommentMap: Record<string, number> = markers.reduce((map: Record<string, number>, marker) => {
-            if (marker.waveSurferRegionID && marker.commentId) {
-              console.log('Mapping waveSurferRegionID to commentId:•', marker.waveSurferRegionID, marker.commentId);
-              map[marker.waveSurferRegionID] = marker.commentId;
-            } else {
-              console.log('Invalid marker:•', marker); // Log markers with missing waveSurferRegionID or commentId
-            }
-            return map;
-          }, {});
-          console.log('New regionCommentMap:•', newRegionCommentMap);
-          setRegionCommentMap(newRegionCommentMap); // Use the setRegionCommentMap from useComments
-        })
-        .catch(error => console.error('Error fetching comments and markers:•', error));
+        .then(() => console.log('Comments and markers fetched successfully.'))
+        .catch(error => console.error('Error fetching comments and markers:', error));
     }
-  }, [track.id, isLoading, setRegionCommentMap]);
+  }, [track.id, isLoading]);
 
   const handleCommentSubmit = async (submittedComment) => {
     console.log('Submitted comment:', submittedComment);
@@ -446,6 +351,19 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
     setVolume(newVolume);
     wavesurferRef.current?.setVolume(newVolume);
   };
+
+  const handleSelectComment = useCallback((commentId: number) => {
+    setSelectedCommentId(commentId);
+    if (!waveSurferRef.current || !regionsRef.current?.list) return;
+
+    Object.values(regionsRef.current.list).forEach((region) => {
+      if (region.data.commentId === commentId) {
+        region.update({ color: 'rgba(0, 255, 0, 0.7)' });
+        waveSurferRef.current.seekTo(region.start / waveSurferRef.current.getDuration());
+      }
+    });
+  }, [setSelectedCommentId]);
+
 
   return (
     <div>

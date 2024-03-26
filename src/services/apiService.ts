@@ -64,6 +64,7 @@ export const getToken = () => {
   const token = localStorage.getItem('token');
   return token || '';  // Return the token, or an empty string if it's not found
 };
+
 export const login = async (email: string, password: string) => {
   console.log("Login request data:", { email, password });
 
