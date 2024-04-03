@@ -117,7 +117,7 @@ const MainContent: React.FC<MainContentProps> = ({ error }) => {
   };
 
   return (
-    <main className="flex flex-col p-4 mx-auto">
+    <main className="flex flex-col p-4 mx-auto w-full">
       {/* Button to manually fetch tracks */}
       {/* <button onClick={handleManualFetch} className="mb-4 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
         Fetch Tracks Manually

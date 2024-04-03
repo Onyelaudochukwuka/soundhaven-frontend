@@ -1,7 +1,4 @@
 // src/types.ts
-import { RegionParams } from "wavesurfer.js/src/plugin/regions";
-import WaveSurfer from "wavesurfer.js";
-import RegionsPlugin from "wavesurfer.js/dist/plugins/regions";
 
 export interface User {
   id: number;

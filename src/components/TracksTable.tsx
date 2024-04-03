@@ -18,10 +18,8 @@ interface TracksTableProps {
 
 const TracksTable: React.FC<TracksTableProps> = ({ onSelectTrack, onDelete, onUpdate }) => {
   const { selectTrack, currentTrack } = usePlayback();
-  const { tracks, fetchTracks, deleteTrack, updateTrack } = useTracks();
+  const { tracks, fetchTracks, deleteTrack } = useTracks();
 
-  const [artists, setArtists] = useState<Artist[]>([]);
-  const [albums, setAlbums] = useState<Album[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTrack, setEditingTrack] = useState<Track | null>(null);
   const [openMenuTrackId, setOpenMenuTrackId] = useState<number | null>(null);
@@ -60,17 +58,9 @@ const TracksTable: React.FC<TracksTableProps> = ({ onSelectTrack, onDelete, onUp
     setEditingTrack(null);
   };
 
-  const handleSave = async (updatedTrackData: Partial<Track>) => {
-    if (editingTrack) {
-      await updateTrackMetadata(editingTrack.id, updatedTrackData);
-      closeModal();
-      fetchTracks(); // Optionally re-fetch tracks to see the updates
-    }
-  };
-
   const handleDelete = async (id: number) => {
     await deleteTrack(id);
-    fetchTracks(); // Re-fetch tracks after deletion
+    fetchTracks();
   };
 
   const handleDoubleClickOnRow = useCallback((track: Track, index: number) => {
@@ -82,6 +72,25 @@ const TracksTable: React.FC<TracksTableProps> = ({ onSelectTrack, onDelete, onUp
     event.stopPropagation();
     setOpenMenuTrackId(openMenuTrackId === id ? null : id);
   };
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      // If the click is outside the menu and not on the menu items, close the menu
+      if (
+        openMenuTrackId !== null &&
+        !event.target.closest('.menu-container') &&
+        !event.target.closest('.menu-item')
+      ) {
+        setOpenMenuTrackId(null);
+      }
+    };
+  
+    // Add event listener
+    document.addEventListener('mousedown', handleClickOutside);
+  
+    // Remove event listener on cleanup
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [openMenuTrackId]);
 
   return (
     <>
@@ -98,10 +107,10 @@ const TracksTable: React.FC<TracksTableProps> = ({ onSelectTrack, onDelete, onUp
         <tbody className="bg-white divide-y divide-gray-200">
           {tracks.map((track, index) => (
             <tr key={track.id}
-            onDoubleClick={() => handleDoubleClickOnRow(track, index)}              
-            className={`hover:bg-gray-100 ${track.id === currentTrack?.id ? 'bg-blue-100' : ''}`}
+              onDoubleClick={() => handleDoubleClickOnRow(track, index)}
+              className={`hover:bg-gray-100 ${track.id === currentTrack?.id ? 'bg-blue-100' : ''}`}
             >
-            
+
               <td className="px-4 py-2">{track.name}</td>
               <td className="px-4 py-2">{track.artist?.name ?? 'Unknown Artist'}</td>
               <td className="px-4 py-2">{track.album?.name ?? 'No Album'}</td>
@@ -109,12 +118,22 @@ const TracksTable: React.FC<TracksTableProps> = ({ onSelectTrack, onDelete, onUp
               <td className="px-4 py-2 relative">
                 <button onClick={(e) => toggleMenu(track.id, e)}>•••</button>
                 {openMenuTrackId === track.id && (
-                  <div className="absolute right-0 bg-white shadow-lg rounded-md z-10">
-                    <button className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" onClick={() => openModal(track)}>Edit Metadata</button>
-                    <button className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  <div className="absolute right-0 bg-white shadow-lg rounded-md z-10 menu-item">
+                    <button
+                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                       onClick={(e) => {
-                        e.stopPropagation();
-                        onDelete(track.id);
+                        e.stopPropagation(); // Prevents click from bubbling to the parent element
+                        openModal(track);
+                        setOpenMenuTrackId(null); // Closes the menu
+                      }}>
+                      Edit Metadata
+                    </button>
+                    <button
+                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 menu-item"
+                      onClick={async (e) => {
+                        e.stopPropagation(); // Prevents click from bubbling to the parent element
+                        await handleDelete(track.id);
+                        setOpenMenuTrackId(null); // Closes the menu
                       }}>
                       Delete Track
                     </button>
@@ -129,7 +148,8 @@ const TracksTable: React.FC<TracksTableProps> = ({ onSelectTrack, onDelete, onUp
         {editingTrack && (
           <EditTrackForm
             track={editingTrack}
-            onSave={handleSave}
+            closeModal={closeModal}
+            fetchTracks={fetchTracks}
           />
         )}
       </Modal>

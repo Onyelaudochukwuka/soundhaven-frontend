@@ -20,7 +20,7 @@ interface FileUploadProps {
         const formData = new FormData();
         formData.append('file', file);
         formData.append('name', extractTitleFromFileName(file.name));
-        
+
         try {
             const success = await uploadTrack(formData); // Use the uploadTrack function from the hook
             if (success) {

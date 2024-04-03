@@ -125,6 +125,8 @@ export const CommentsProvider: FunctionComponent<CommentsProviderProps> = ({ chi
       return;
     }
 
+    console.log(`Sending data * - trackId: ${trackId}, time: ${time}, type of time: ${typeof time}, waveSurferRegionID: ${waveSurferRegionID}`);
+
     try {
       const response = await fetch(`${backendUrl}/comments/with-marker`, {
         method: 'POST',

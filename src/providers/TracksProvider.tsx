@@ -23,7 +23,7 @@ export const TracksProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     try {
       const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/tracks`);
       const tracks = await handleResponse<Track[]>(response);
-      console.log('Tracks fetched:', tracks);
+      console.log('Tracks fetched: #', tracks);
       setTracks(tracks);
     } catch (error) {
       console.error('Error fetching tracks:', error);
@@ -81,23 +81,39 @@ const deleteTrack = async (id: number) => {
   }
 };
 
-// Metadata functionality
- const updateTrackMetadata = async (trackId: number, updatedData: Partial<Track>) => {
+const updateTrackMetadata = async (trackId: number, updatedData: Partial<Track>) => {
+  console.log('updateTrackMetadata received', updatedData);
+
   const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL as string;
-  const response = await fetch(`${backendUrl}/tracks/${trackId}`, {
-    method: 'PATCH',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(updatedData),
-  });
+
+  console.log("Final data being sent to backend:", { name: updatedData.name, artistName: updatedData.artist?.name, albumName: updatedData.album?.name });
+
+    // Preparing the payload
+    const payload = JSON.stringify({
+      name: updatedData.name,
+      artistName: updatedData.artistName,
+      albumName: updatedData.albumName,
+    });
+  
+    console.log("Sending payload:", payload);
+
+    const response = await fetch(`${backendUrl}/tracks/${trackId}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: payload,
+    });
 
   if (!response.ok) {
     const errorData = await response.json();
+    console.error(`Error updating track ${trackId}:`, errorData.message || 'Unknown error');
     throw new Error(errorData.message || 'Error updating track');
   }
 
-  return response.json();
+  const responseData = await response.json();
+  console.log(`Track ${trackId} updated successfully:`, responseData);
+  return responseData;
 };
 
   const updateTrack = (trackId: number, field: keyof Track, value: string) => {

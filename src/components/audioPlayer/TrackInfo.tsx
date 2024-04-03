@@ -14,10 +14,9 @@ const TrackInfo: React.FC<TrackInfoProps> = ({ track }) => {
 
   return (
     <div className="text-center">
-      {/* Safely access track.name with a fallback for undefined track */}
       <h2 className="text-lg font-bold">{track.name || 'Unknown Track'}</h2>
-      {/* Safely access track.artist.name with fallbacks for undefined track or artist */}
       <p className="text-sm text-gray-500">{track.artist?.name || 'Unknown Artist'}</p>
+      <p className="text-sm text-gray-500">{track.album?.name || 'Unknown Album'}</p>
     </div>
   );
 };

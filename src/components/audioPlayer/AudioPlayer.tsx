@@ -98,6 +98,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
       const clickTime = waveSurferRef.current.getDuration() * (clickPositionX / waveformRef.current.offsetWidth);
 
       console.log('About to add region. Current regions:', regionsRef.current.regions);
+      console.log('[debouncedHandleDoubleClick] Calculated clickTime:', clickTime);
       const region = regionsRef.current.addRegion({
         start: clickTime,
         color: 'rgba(255, 165, 0, 0.5)',
@@ -105,6 +106,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
         resize: false,
       });
 
+      console.log('[debouncedHandleDoubleClick] Setting regionParams:', { id: region.id, start: clickTime, end: clickTime + 1, color: 'rgba(255, 165, 0, 0.5)' });
       setRegionParams({
         id: region.id,
         start: clickTime,
@@ -357,6 +359,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
   }, [track.id, isLoading, setRegionCommentMap]);
 
   const handleCommentSubmit = async (submittedComment) => {
+    console.log('[handleCommentSubmit] Current regionParams:', regionParams);
     console.log('Submitted comment:', submittedComment);
     if (!user || !token) {
       console.error("User or token not available");
@@ -370,15 +373,15 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
         const { time: startTime, id: waveSurferRegionID } = regionParams;
 
         // Log the request payload for debugging
-        console.log('Sending request to add comment with marker:', {
+        console.log('Sending request to add comment with marker & region:', {
           trackId: track.id,
           content: submittedComment,
-          time: startTime,
-          waveSurferRegionID: waveSurferRegionID,
+          time: regionParams.start,
+          waveSurferRegionID: regionParams.id,
           token: token
         });
 
-        await addMarkerAndComment(track.id, submittedComment, startTime, waveSurferRegionID, token);
+        await addMarkerAndComment(track.id, submittedComment, regionParams.start, regionParams.id, token);
       } else {
         console.log("No marker associated with this comment (skipping marker creation).");
       }
