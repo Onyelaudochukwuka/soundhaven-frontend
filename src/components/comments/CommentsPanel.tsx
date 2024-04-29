@@ -7,6 +7,7 @@ import CommentBlock from './CommentBlock';
 import { useRef } from 'react';
 import WaveSurfer from 'wavesurfer.js';
 import RegionsPlugin from 'wavesurfer.js/dist/plugins/regions';
+import { usePlayback } from '@/hooks/UsePlayback';
 
 interface CommentsPanelProps {
   trackId: number;
@@ -18,6 +19,7 @@ interface CommentsPanelProps {
   waveSurferRef: React.MutableRefObject<WaveSurfer | null>;
   handleCommentClick: (commentId: number) => void;
   onSelectComment: (commentId: number) => void;
+  // setIsCommentInputFocused: (isFocused: boolean) => void;
 }
 
 const CommentsPanel: React.FC<CommentsPanelProps> = ({
@@ -27,6 +29,7 @@ const CommentsPanel: React.FC<CommentsPanelProps> = ({
   regionsRef,
   waveSurferRef,
   onSelectComment,
+  // setIsCommentInputFocused,
 }) => {
   const { user, token, loading: authLoading } = useAuth();
   // TODO: Refactor so CommentsProvider handles newComment and setNewComment.
@@ -45,13 +48,21 @@ const CommentsPanel: React.FC<CommentsPanelProps> = ({
 
   const [newComment, setNewComment] = useState<string>('');
   const commentBlockRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const [isCommentInputFocused, setIsCommentInputFocused] = useState(false); // Local state for input
 
-    // Function to assign a ref to the ref object
-    const setCommentBlockRef = (element, id) => {
-      if (element) {
-        commentBlockRefs.current[id] = element;
-      }
-    };
+  const { setIsCommentInputFocused: setIsFocusedFromContext } = usePlayback();
+
+  // Update PlaybackContext when local state changes
+  useEffect(() => {
+      setIsFocusedFromContext(isCommentInputFocused);
+  }, [isCommentInputFocused, setIsFocusedFromContext]);
+
+  // Function to assign a ref to the ref object
+  const setCommentBlockRef = (element, id) => {
+    if (element) {
+      commentBlockRefs.current[id] = element;
+    }
+  };
 
   // const [hasMore, setHasMore] = useState<boolean>(true);
   // const [page, setPage] = useState<number>(1);
@@ -148,6 +159,8 @@ const CommentsPanel: React.FC<CommentsPanelProps> = ({
             className="w-full p-2 border"
             placeholder="Write a comment..."
             disabled={!user || !token}
+            onFocus={() => setIsCommentInputFocused(true)}
+            onBlur={() => setIsCommentInputFocused(false)}
           />
           <button type="submit" className="bg-blue-500 text-white p-2 rounded" disabled={!user || !token}>
             Post

@@ -55,7 +55,11 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
 
   const [modalOpen, setModalOpen] = useState(false);
   const [comment, setComment] = useState('');
-  const [regionParams, setRegionParams] = useState<RegionParams | null>(null);
+  const [regionParams, setRegionParams] = useState<RegionParams>({
+    id: '',
+    start: 0,
+    end: 0
+  });
   const { fetchTrack } = useTracks();
 
   const regionsRef = useRef<RegionsPlugin | null>(null);
@@ -80,7 +84,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
     setRegionCommentMap,
   } = useComments(waveSurferRef, regionsRef);
 
-  console.log("Markers in AudioPlayer, after destruc useComments:•", markers);
+  // console.log("Markers in AudioPlayer, after destruc useComments:•", markers);
 
   const customRegionsRef = useRef<Map<string, CustomRegionWrapper>>(new Map());
 
@@ -116,7 +120,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
 
       setModalOpen(true);
     }
-  }, 300), [setRegionParams, setModalOpen]);
+  }, 300), [setRegionParams]);
 
   const handleRegionClick = useCallback((regionId) => {
     const commentId = regionCommentMap[regionId];
@@ -127,24 +131,6 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
       }
     }
   }, [regionCommentMap, onSelectComment, showComments, toggleComments]);
-
-  // Disables spacebar playing/pausing audio when comment modal is open.
-  useEffect(() => {
-    const handleKeyDown = (event) => {
-      // Check if modal is open and the pressed key is the spacebar
-      if (modalOpen && event.code === 'Space') {
-        event.preventDefault(); // Prevent the default spacebar action (play/pause)
-      }
-    };
-
-    // Add event listener when component mounts
-    document.addEventListener('keydown', handleKeyDown);
-
-    // Remove event listener on cleanup
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [modalOpen]);
 
   // Main hook for waveform initialization
   useEffect(() => {
@@ -184,7 +170,11 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
 
         // Listener for region clicks
         regionsPlugin.on('region-clicked', (region, event) => {
-          event.stopPropagation(); // prevent triggering click on the waveform
+          console.log('--- Region Click Event ---'); // Mark the start of region click event logs
+          console.log('event.target:', event.target);
+          console.log('event.currentTarget:', event.currentTarget);
+
+          // event.stopPropagation(); // prevent triggering click on the waveform
           // console.log('Region clicked. Region.id:', region.id);
           console.log('Region clicked. Region:•', region);
           console.log('Region id:•', region.id);
@@ -326,7 +316,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
   useEffect(() => {
     loadRegions(); // Call the memoized function to load regions
 
-    console.log('regionCommentMap in useEffect loadRegions:', regionCommentMap);
+    // console.log('regionCommentMap in useEffect loadRegions:', regionCommentMap);
 
     return () => {
       if (regionsRef.current) {
@@ -339,19 +329,19 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
     if (track.id && !isLoading) {
       fetchCommentsAndMarkers(track.id)
         .then(() => {
-          console.log('Comments and markers fetched successfully.•');
-          console.log('Markers:•', markers); // Log the markers array
+          // console.log('Comments and markers fetched successfully.•');
+          // console.log('Markers:•', markers); // Log the markers array
           // Populate regionCommentMap here
           const newRegionCommentMap: Record<string, number> = markers.reduce((map: Record<string, number>, marker) => {
             if (marker.waveSurferRegionID && marker.commentId) {
-              console.log('Mapping waveSurferRegionID to commentId:•', marker.waveSurferRegionID, marker.commentId);
+              // console.log('Mapping waveSurferRegionID to commentId:•', marker.waveSurferRegionID, marker.commentId);
               map[marker.waveSurferRegionID] = marker.commentId;
             } else {
               console.log('Invalid marker:•', marker); // Log markers with missing waveSurferRegionID or commentId
             }
             return map;
           }, {});
-          console.log('New regionCommentMap:•', newRegionCommentMap);
+          // console.log('New regionCommentMap:•', newRegionCommentMap);
           setRegionCommentMap(newRegionCommentMap); // Use the setRegionCommentMap from useComments
         })
         .catch(error => console.error('Error fetching comments and markers:•', error));
@@ -361,6 +351,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
   const handleCommentSubmit = async (submittedComment) => {
     console.log('[handleCommentSubmit] Current regionParams:', regionParams);
     console.log('Submitted comment:', submittedComment);
+
     if (!user || !token) {
       console.error("User or token not available");
       return;
@@ -369,19 +360,20 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
     console.log('token inside handleCommentSubmit:', token)
 
     try {
-      if (regionParams) {
-        const { time: startTime, id: waveSurferRegionID } = regionParams;
-
+      if (regionParams && !isNaN(regionParams.start)) {
+        const startTime = regionParams.start ?? 0; 
+        const { id: waveSurferRegionID } = regionParams; // Destructure without 'start'
+    
         // Log the request payload for debugging
         console.log('Sending request to add comment with marker & region:', {
           trackId: track.id,
           content: submittedComment,
-          time: regionParams.start,
-          waveSurferRegionID: regionParams.id,
+          time: startTime,
+          waveSurferRegionID,
           token: token
         });
-
-        await addMarkerAndComment(track.id, submittedComment, regionParams.start, regionParams.id, token);
+    
+        await addMarkerAndComment(track.id, submittedComment, startTime, waveSurferRegionID, token); 
       } else {
         console.log("No marker associated with this comment (skipping marker creation).");
       }
@@ -458,6 +450,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
 
           <div ref={waveformRef} style={{ height: '128px', width: '100%' }} />
           <AudioControls
+            modalOpen={modalOpen}
             isPlaying={isPlaying}
             onPlayPause={togglePlayback}
             onSkipForward={handleSkipForward}
@@ -481,14 +474,14 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
           <form onSubmit={(e) => {
             e.preventDefault();
             handleCommentSubmit(comment); // Directly use the comment state
-            setComment(''); // Clear the comment input after submission
+            // setComment(''); // Clear the comment input after submission
           }}>
             <input
               name="comment"
               type="text"
               placeholder="Enter comment"
               value={comment}
-              onChange={(e) => setComment(e.target.value)} // Update comment state on change
+              onChange={(e) => setComment(e.target.value)}
             />
             <button type="submit">Submit</button>
           </form>

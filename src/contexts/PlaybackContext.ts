@@ -9,6 +9,10 @@ export interface PlaybackContextValue {
     selectTrack: (track: Track, index: number) => void;
     nextTrack: (tracks: Track[]) => void;
     previousTrack: (tracks: Track[]) => void;
+    spacebarPlaybackEnabled: boolean;
+    toggleSpacebarPlayback: () => void;
+    isCommentInputFocused: boolean;
+    setIsCommentInputFocused: (isFocused: boolean) => void;
 }
 
 const initialPlaybackContextValue: PlaybackContextValue = {
@@ -18,7 +22,11 @@ const initialPlaybackContextValue: PlaybackContextValue = {
     togglePlayback: () => {},
     selectTrack: () => {},
     nextTrack: () => {},
-    previousTrack: () => {}
+    previousTrack: () => {},
+    spacebarPlaybackEnabled: true,
+    toggleSpacebarPlayback: () => {},
+    isCommentInputFocused: false,   
+    setIsCommentInputFocused: () => {}
 };
 
 export const PlaybackContext = createContext<PlaybackContextValue>(initialPlaybackContextValue);

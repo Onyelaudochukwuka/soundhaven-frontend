@@ -10,6 +10,7 @@ import { Track, Comment } from '../../../types/types';
 import { useComments } from '@/hooks/UseComments';
 import WaveSurfer from 'wavesurfer.js';
 import RegionsPlugin from 'wavesurfer.js/dist/plugins/regions.js';
+import { usePlayback } from '@/hooks/UsePlayback';
 
 interface MainContentProps {
   error: string;
@@ -20,6 +21,8 @@ const MainContent: React.FC<MainContentProps> = ({ error }) => {
   const [showComments, setShowComments] = useState(false);
   const selectedTrackId = currentTrack?.id ?? 0;
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const { setIsCommentInputFocused } = usePlayback();
+
 
   const { 
     comments, 
@@ -170,6 +173,7 @@ const MainContent: React.FC<MainContentProps> = ({ error }) => {
           waveSurferRef={waveSurferRef}
           handleCommentClick={handleCommentClick}
           selectedCommentId={selectedCommentId}
+          setIsCommentInputFocused={setIsCommentInputFocused}
           />
       )}
 

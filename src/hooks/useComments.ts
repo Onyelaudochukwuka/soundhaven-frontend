@@ -28,7 +28,7 @@ export const useComments = (
 
   const [newCommentInput, setNewCommentInput] = useState('');
 
-  console.log("Markers in useComments:•", markers);
+  // console.log("Markers in useComments:•", markers);
 
   // Add other comment-related logic and state variables here, e.g.,
   // const [isLoading, setIsLoading] = useState(false);

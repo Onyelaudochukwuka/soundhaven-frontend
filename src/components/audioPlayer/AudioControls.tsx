@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { AudioControlsProps } from '../../../types/types'; 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faPlay, faPause, faForward, faBackward, faStepForward, faStepBackward, faHeart } from '@fortawesome/free-solid-svg-icons';
+import { usePlayback } from '@/hooks/UsePlayback';
 
 const AudioControls: React.FC<AudioControlsProps> = ({
   isPlaying,
@@ -15,23 +16,28 @@ const AudioControls: React.FC<AudioControlsProps> = ({
   onVolumeChange,
   isFavorite,
   playbackSpeed,
-  volume
+  volume,
+  modalOpen, 
 }) => {
 
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
+const { spacebarPlaybackEnabled, toggleSpacebarPlayback, isCommentInputFocused } = usePlayback();
+
+useEffect(() => {
+  const handleKeyDown = (event: KeyboardEvent) => {
       if (event.code === 'Space') {
-        event.preventDefault();
-        onPlayPause();
+        if (!modalOpen && !isCommentInputFocused && spacebarPlaybackEnabled) { 
+          event.preventDefault();
+              onPlayPause();
+          } 
+          // Otherwise, allow the spacebar to work normally with the modal input
       }
-    };
+  };
 
-    window.addEventListener('keydown', handleKeyDown);
-
-    return () => {
+  window.addEventListener('keydown', handleKeyDown);
+  return () => {
       window.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [onPlayPause]); 
+  };
+}, [onPlayPause, modalOpen, isCommentInputFocused, spacebarPlaybackEnabled]); 
 
   return (
     <div className="audio-controls" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '30px' }}>

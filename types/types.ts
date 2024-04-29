@@ -96,6 +96,7 @@ export interface AudioControlsProps {
   isFavorite: boolean;
   playbackSpeed: number;
   volume: number;
+  modalOpen: boolean;
 }
 
 export type TrackUpdatePayload = {

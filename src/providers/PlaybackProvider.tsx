@@ -10,6 +10,12 @@ export const PlaybackProvider: FC<PlaybackProviderProps> = ({ children }) => {
     const [isPlaying, setIsPlaying] = useState(false);
     const [currentTrack, setCurrentTrack] = useState<Track | null>(null);
     const [currentTrackIndex, setCurrentTrackIndex] = useState(-1);
+    const [spacebarPlaybackEnabled, setSpacebarPlaybackEnabled] = useState(true);
+    const [isCommentInputFocused, setIsCommentInputFocused] = useState(false); 
+
+    const toggleSpacebarPlayback = useCallback(() => {
+        setSpacebarPlaybackEnabled(prevEnabled => !prevEnabled);
+    }, []);
 
     const togglePlayback = useCallback(() => {
         setIsPlaying(prevIsPlaying => !prevIsPlaying);
@@ -38,7 +44,22 @@ export const PlaybackProvider: FC<PlaybackProviderProps> = ({ children }) => {
     }, [currentTrackIndex, selectTrack]); // Removed tracks.length from dependencies
 
     return (
-        <PlaybackContext.Provider value={{ isPlaying, currentTrack, currentTrackIndex, togglePlayback, selectTrack, nextTrack, previousTrack }}>
+        <PlaybackContext.Provider value={
+            { 
+              isPlaying, 
+              currentTrack, 
+              currentTrackIndex, 
+              togglePlayback, 
+              selectTrack, 
+              nextTrack, 
+              previousTrack, 
+              spacebarPlaybackEnabled, 
+              toggleSpacebarPlayback,
+              isCommentInputFocused, 
+              setIsCommentInputFocused 
+              }
+            }
+        >
             {children}
         </PlaybackContext.Provider>
     );

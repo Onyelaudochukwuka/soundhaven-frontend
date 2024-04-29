@@ -104,7 +104,7 @@ export const CommentsProvider: FunctionComponent<CommentsProviderProps> = ({ chi
         return map;
       }, {});
   
-      console.log("New regionCommentMap:", newRegionCommentMap);
+      // console.log("New regionCommentMap:", newRegionCommentMap);
   
       setRegionCommentMap(newRegionCommentMap);
 
