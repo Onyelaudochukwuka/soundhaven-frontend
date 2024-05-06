@@ -3,7 +3,6 @@
 export interface User {
   id: number;
   email: string;
-  // password: string;
   name?: string;
   createdAt: string;
   updatedAt: string;
@@ -116,27 +115,27 @@ export type _Comment = {
   replyTo?: Comment; // Optional Comment being replied to
 };
 
-export interface CommentsContextType {
-  newCommentInput: string;
-  setNewCommentInput: React.Dispatch<React.SetStateAction<string>>;
-  comments: _Comment[];
-  setComments: React.Dispatch<React.SetStateAction<_Comment[]>>;
-  fetchComments: (trackId: number, page?: number, limit?: number) => Promise<void>; 
-  fetchCommentsAndMarkers: (trackId: number, page?: number, limit?: number) => Promise<void>;
-  addComment: (trackId: number, userId: number, content: string, token: string) => Promise<void>;
-  addMarkerAndComment: (trackId: number, content: string, time: number, waveSurferRegionID: string, token: string) => Promise<void>;
-  editComment: (commentId: number, content: string) => Promise<void>;
-  deleteComment: (commentId: number) => Promise<void>;
-  markers: Marker[];
-  setMarkers: (newMarkers: Marker[]) => void;
-  selectedCommentId: number | null;
-  setSelectedCommentId: React.Dispatch<React.SetStateAction<number | null>>;
-  selectedRegionId: string | null;
-  setSelectedRegionId: React.Dispatch<React.SetStateAction<string | null>>;
-  regionCommentMap: Record<string, number>;
-  setRegionCommentMap: React.Dispatch<React.SetStateAction<Record<string, number>>>;
-  handleSelectComment: (commentId: number) => void; 
-}
+// export interface CommentsContextType {
+//   newCommentInput: string;
+//   setNewCommentInput: React.Dispatch<React.SetStateAction<string>>;
+//   comments: _Comment[];
+//   setComments: React.Dispatch<React.SetStateAction<_Comment[]>>;
+//   fetchComments: (trackId: number, page?: number, limit?: number) => Promise<void>; 
+//   fetchCommentsAndMarkers: (trackId: number, page?: number, limit?: number) => Promise<void>;
+//   addComment: (trackId: number, userId: number, content: string, token: string) => Promise<void>;
+//   addMarkerAndComment: (trackId: number, content: string, time: number, waveSurferRegionID: string, token: string) => Promise<void>;
+//   editComment: (commentId: number, content: string) => Promise<void>;
+//   deleteComment: (commentId: number) => Promise<void>;
+//   markers: Marker[];
+//   setMarkers: (newMarkers: Marker[]) => void;
+//   selectedCommentId: number | null;
+//   setSelectedCommentId: React.Dispatch<React.SetStateAction<number | null>>;
+//   selectedRegionId: string | null;
+//   setSelectedRegionId: React.Dispatch<React.SetStateAction<string | null>>;
+//   regionCommentMap: Record<string, number>;
+//   setRegionCommentMap: React.Dispatch<React.SetStateAction<Record<string, number>>>;
+//   handleSelectComment: (commentId: number) => void; 
+// }
 
 export interface Marker {
   id: string | number; // Align with backend type but allow string for frontend unique identification

@@ -1,30 +1,48 @@
 // CommentsProvider.tsx
-import React, { FunctionComponent, useState, ReactNode } from 'react';
+import React, { FunctionComponent, useState, useEffect, useContext, useCallback, ReactNode } from 'react';
 import CommentsContext from '@/contexts/CommentsContext';
+import { PlaybackContext } from '@/contexts/PlaybackContext'; // Ensure correct path
 import { _Comment, Marker } from '../../types/types'; // Adjust the import path as needed
 import { backendUrl } from '@/services/apiService';
-import { CommentsContextType } from '../../types/types';
+// import { CommentsContextType } from '../../types/types';
 
 interface CommentsProviderProps {
   children: ReactNode;
 }
 
 export const CommentsProvider: FunctionComponent<CommentsProviderProps> = ({ children }) => {
-  // const [newCommentInput, setNewCommentInput] = useState('');
   const [comments, setComments] = useState<_Comment[]>([]);
   const [markers, setMarkers] = useState<Marker[]>([]);
   const [selectedCommentId, setSelectedCommentId] = useState<number | null>(null);
   const [selectedRegionId, setSelectedRegionId] = useState<string | null>(null);
   const [regionCommentMap, setRegionCommentMap] = useState<Record<string, number>>({});
+  const [isLoadingComments, setIsLoadingComments] = useState(false); 
   const [isLoadingMarkers, setIsLoadingMarkers] = useState(false); 
-
+  const [commentsError, setCommentsError] = useState<string | null>(null);
+  const [commentAddedFlag, setCommentAddedFlag] = useState(false);
+  const { currentTrack } = useContext(PlaybackContext);
+  const [isCommentAdding, setIsCommentAdding] = useState(false); 
 
   // const [commentsCount, setCommentsCount] = useState<number>(0);
 
   const [error, setError] = useState<string | null>(null);
 
+  // useEffect(() => {
+  //   if (commentAddedFlag && currentTrack?.id) {
+  //     fetchCommentsAndMarkers(currentTrack.id)
+  //       .then(() => {
+  //         console.log("Comments re-fetched after adding a new comment");
+  //         setCommentAddedFlag(false);
+  //       })
+  //       .catch(error => {
+  //         console.error("Failed to fetch comments after adding new one:", error);
+  //         setCommentAddedFlag(false);
+  //       });
+  //   }
+  // }, [commentAddedFlag, currentTrack?.id]); 
+
   const fetchComments = async (trackId: number, page: number = 1, limit: number = 10) => {
-    console.log(`fetchComments called with trackId: ${trackId}, page: ${page}, limit: ${limit}`);
+    // console.log(`fetchComments called with trackId: ${trackId}, page: ${page}, limit: ${limit}`);
 
     if (!trackId || trackId <= 0) {
       console.error("Invalid trackId, skipping fetchComments");
@@ -33,7 +51,7 @@ export const CommentsProvider: FunctionComponent<CommentsProviderProps> = ({ chi
 
     try {
       const response = await fetch(`${backendUrl}/comments?trackId=${trackId}&page=${page}&limit=${limit}`);
-      console.log("Raw response:", response); // Debugging: Log the raw response
+      // console.log("Raw response:", response); // Debugging: Log the raw response
 
       if (!response.ok) {
         throw new Error(`Failed to fetch comments: ${response.statusText}`);
@@ -45,7 +63,7 @@ export const CommentsProvider: FunctionComponent<CommentsProviderProps> = ({ chi
         return;
       }
 
-      console.log("Fetched comments:", fetchedComments);
+      // console.log("Fetched comments:", fetchedComments);
       setComments(fetchedComments); // Update comments state
 
     } catch (error) {
@@ -53,32 +71,37 @@ export const CommentsProvider: FunctionComponent<CommentsProviderProps> = ({ chi
     }
   };
 
-  const fetchCommentsAndMarkers = async (trackId: number, page: number = 1, limit: number = 10) => {
-    console.log(`fetchCommentsAndMarkers called with trackId: ${trackId}, page: ${page}, limit: ${limit}`);
+  const fetchCommentsAndMarkers = useCallback(async (trackId: number, page: number = 1, limit: number = 10) => {
+    // console.log(`fetchCommentsAndMarkers called with trackId: ${trackId}, page: ${page}, limit: ${limit}`);
 
     if (!trackId || trackId <= 0) {
       console.error("Invalid trackId, skipping fetchCommentsAndMarkers");
       return;
     }
 
-    try {
-      setIsLoadingMarkers(true);
+    setIsLoadingMarkers(true);
 
+    try {
       const response = await fetch(`${backendUrl}/comments?trackId=${trackId}&page=${page}&limit=${limit}`);
-      console.log("Raw response:•", response);
+      console.log("Raw response from fetchCommentsAndMarkers:", response);
 
       if (!response.ok) {
         throw new Error(`Failed to fetch comments: ${response.statusText}`);
       }
 
       const fetchedComments: _Comment[] = await response.json();
+      console.log('Fetched comments Array:', fetchedComments); 
+
       if (!Array.isArray(fetchedComments)) {
         console.error("Expected an array of comments, received:", typeof fetchedComments);
+        setIsLoadingMarkers(false);
         return;
       }
-      console.log("Fetched comments:•", fetchedComments);
+      // console.log("Fetched comments:•", fetchedComments);
 
+      console.log('Comments array before updating state for fetchedComments:', fetchedComments);
       setComments(fetchedComments); // Update comments state
+      console.log('Updated fetchedComments array from fetchCommentsAndMarkers:', fetchedComments);
 
       const extractedMarkers = fetchedComments
       .filter(comment => comment.marker)
@@ -92,10 +115,10 @@ export const CommentsProvider: FunctionComponent<CommentsProviderProps> = ({ chi
       }));
   
       // Log extracted markers
-      console.log("Extracted markers:•", extractedMarkers);
+      // console.log("Extracted markers:•", extractedMarkers);
 
       setMarkers(extractedMarkers); // Update markers state
-      console.log("Updated markers in CommentsProvider:•", markers);
+      console.log('Updated markers array from fetchCommentsAndMarkers:', extractedMarkers);
 
       const newRegionCommentMap: Record<string, number> = extractedMarkers.reduce((map: Record<string, number>, marker) => {
         if (marker.waveSurferRegionID && marker.commentId) {
@@ -103,31 +126,29 @@ export const CommentsProvider: FunctionComponent<CommentsProviderProps> = ({ chi
         }
         return map;
       }, {});
-  
-      // console.log("New regionCommentMap:", newRegionCommentMap);
-  
       setRegionCommentMap(newRegionCommentMap);
-
-      // console.log("Extracted markers before creating regionCommentMap:", extractedMarkers);
-      console.log("Region-Comment Map in CommentsProvider:", regionCommentMap);
-
-      setRegionCommentMap(regionCommentMap);
       setIsLoadingMarkers(false); // Set loading to false after everything is updated
     } catch (error) {
       console.error("Error fetching comments and markers:", error);
       setError('Failed to fetch comments and markers. Please try again.');
+      setIsLoadingMarkers(false);
     }
-  };
+  }, [setIsLoadingMarkers, setComments, setMarkers, setRegionCommentMap, setError]);
 
-  const addMarkerAndComment = async (trackId: number, content: string, time: number, waveSurferRegionID: string, token: string) => {
+  const addMarkerAndComment = async (trackId, content, time, waveSurferRegionID, token) => {
+    setIsCommentAdding(true);
+
     if (!token) {
       console.error("Token is not available or expired.");
       return;
     }
-
-    console.log(`Sending data * - trackId: ${trackId}, time: ${time}, type of time: ${typeof time}, waveSurferRegionID: ${waveSurferRegionID}`);
+  
+    // console.log(`Sending data * - trackId: ${trackId}, time: ${time}, type of time: ${typeof time}, waveSurferRegionID: ${waveSurferRegionID}`);
+  
+    console.log('addMarkerAndComment - Before network request, comments:', comments); // Log the state of comments
 
     try {
+
       const response = await fetch(`${backendUrl}/comments/with-marker`, {
         method: 'POST',
         headers: {
@@ -141,44 +162,47 @@ export const CommentsProvider: FunctionComponent<CommentsProviderProps> = ({ chi
           waveSurferRegionID,
         }),
       });
-
-      // Parse the JSON from the response body once
+  
       const responseData = await response.json();
-      console.log("Response data:", responseData);
-
+  
       if (!response.ok) {
         console.error("Error adding comment and marker:", responseData);
         throw new Error(`HTTP error! status: ${response.status}, message: ${responseData.message}`);
       }
+  
+      // Assuming responseData structure is { comment: Comment, marker: Marker }
+      if (responseData.comment && responseData.marker) {
+        // Correctly formatting the date and handling the marker
+        const formattedComment = {
+          ...responseData.comment,
+          createdAt: new Date(responseData.comment.createdAt).toISOString(),
+          marker: {
+            ...responseData.marker,
+            createdAt: new Date(responseData.marker.createdAt).toISOString()
+          }
+        };
+  
+        setComments(prevComments => [formattedComment, ...prevComments]);
+        setMarkers(prevMarkers => [formattedComment.marker, ...prevMarkers]);
+        setRegionCommentMap(prevMap => ({...prevMap, [responseData.marker.waveSurferRegionID]: responseData.comment.id}));
 
-      const newComment = responseData as Comment; // Casting the response to match the Comment type
-      console.log("New comment and potentially a marker added:", newComment);
-
-      // Update comments state to include the new comment
-      setComments((prevComments: Comment[]) => [...prevComments, newComment]);
-
-      // Check if the marker data exists and has all required fields before updating the markers state
-      if (newComment.marker && typeof newComment.marker.id === 'number' && typeof newComment.marker.time === 'number') {
-        console.log("Adding new marker to state:", newComment.marker);
-        setMarkers((prevMarkers) => [...prevMarkers, {
-          id: newComment.marker!.id,
-          time: newComment.marker!.time,
-          commentId: newComment.id,
-          trackId: newComment.trackId,
-          createdAt: newComment.createdAt,
-          waveSurferRegionID: newComment.marker?.waveSurferRegionID ?? '',
-          comment: newComment,
-        }]);
+        console.log('Updated comments array inside addMarkerAndComment, after setComments appends comment:', comments)
       } else {
-        console.warn('Marker data is missing for the new comment:', newComment.id);
+        console.error('Invalid response data structure', responseData);
+        // Handle unexpected data structure
       }
 
-      // await fetchCommentsAndMarkers(trackId);
-
+      console.log('addMarkerAndComment - After successful response, comments:', comments); // Log comments again
+  
     } catch (error) {
       console.error("Error adding comment and marker:", error);
+      // Rollback any optimistic updates if necessary
+    } finally {
+      setIsCommentAdding(false); // Reset loading state regardless of success or failure
     }
+    console.log('Updated comments array inside addMarkerAndComment, after setCommentIsAdding is set to false:', comments) // Log for state change
   };
+  
 
 
   const addComment = async (trackId: number, userId: number, content: string, token: string) => {
@@ -198,12 +222,16 @@ export const CommentsProvider: FunctionComponent<CommentsProviderProps> = ({ chi
         throw new Error(`HTTP error! status: ${response.status}, message: ${errorData.message}`);
       }
 
-      const newComment = await response.json(); // Safely parse the successful response
+      const newComment = await response.json();
       console.log("New comment added:", newComment);
 
       // Assuming setComments updates the state to reflect the newly added comment
       // and that your state structure aligns with the response structure
-      setComments(prevComments => [...prevComments, { ...newComment, createdAt: new Date(newComment.createdAt).toISOString() }]);
+      setComments(prevComments => [...prevComments, {
+        ...newComment, 
+        createdAt: new Date(newComment.createdAt).toISOString()
+      }]);
+
     } catch (error) {
       console.error("Error adding comment:", error);
     }
@@ -255,6 +283,8 @@ export const CommentsProvider: FunctionComponent<CommentsProviderProps> = ({ chi
         setSelectedRegionId,
         regionCommentMap,
         setRegionCommentMap,
+        isLoadingComments,
+        commentsError,
       }}>
       {children}
     </CommentsContext.Provider>

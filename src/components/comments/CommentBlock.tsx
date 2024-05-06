@@ -16,11 +16,14 @@ const CommentBlock = forwardRef<HTMLDivElement, CommentBlockProps>(({
   handleCommentClick,
   index
 }, ref) => {
-  // A simple date formatting function
-  const formatDate = (dateString: string): string => {
-    const date = new Date(dateString);
+
+  const formatDate = (dateInput: string | Date): string => {
+    const date = typeof dateInput === 'string' ? new Date(dateInput) : dateInput;
+    if (!date || isNaN(date.getTime())) { // Check if date is valid
+      return 'Invalid date'; // Return a placeholder or fallback value
+    }
     return `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
-  };
+  };  
 
   // Format marker time if present
   const markerTime = comment.marker?.time;
@@ -36,14 +39,13 @@ const CommentBlock = forwardRef<HTMLDivElement, CommentBlockProps>(({
       ref={ref}
       className={`border-b border-gray-200 py-4 ${isSelected ? 'bg-gray-100' : 'bg-white'} cursor-pointer`}
       onClick={() => handleCommentClick(comment.id)}
-
     >
       <div className="font-bold">{comment.userName}</div>
       {markerTime !== undefined && (
         <div className="text-xs text-gray-400">Time: {formatMarkerTime(markerTime)}</div>
       )}
       <p className="mt-1">{comment.content}</p>
-      <div className="text-sm text-gray-500 mt-2">{formatDate(comment.createdAt)}</div>
+      <div className="text-sm text-gray-500 mt-2">{formatDate(new Date(comment.createdAt))}</div>
     </div>
   );
 });

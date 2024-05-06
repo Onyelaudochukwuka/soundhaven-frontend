@@ -1,20 +1,20 @@
 import { useState, useContext, useCallback, useEffect } from 'react';
 import CommentsContext from '@/contexts/CommentsContext';
-import { CommentsContextType } from '../../types/types';
+// import { CommentsContextType } from '../../types/types';
 import RegionsPlugin from 'wavesurfer.js/dist/plugins/regions';
 
 export const useComments = (
   waveSurferRef: React.MutableRefObject<WaveSurfer | null>,
   regionsRef: React.MutableRefObject<RegionsPlugin | null>
-): CommentsContextType => {
+): any => {
   const { 
     comments, 
     setComments, 
     markers,
     setMarkers,
     fetchComments,
-    fetchCommentsAndMarkers, 
-    addComment, 
+    fetchCommentsAndMarkers,
+    addComment,
     addMarkerAndComment, 
     editComment,
     deleteComment,
@@ -41,8 +41,9 @@ export const useComments = (
   }, [selectedCommentId]);
 
   const handleSelectComment = useCallback((commentId: number) => {
-    console.log('handleSelectComment called with commentId:', commentId);
-
+    console.log('handleSelectComment called with:', commentId);
+    console.log('Current state of comments:', comments);
+    
     setSelectedCommentId(commentId);
 
     if (!waveSurferRef.current || !regionsRef.current) return;

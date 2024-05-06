@@ -72,6 +72,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
 
   const {
     comments,
+    setComments,
     markers,
     setMarkers,
     addMarkerAndComment,
@@ -82,7 +83,14 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
     setSelectedRegionId,
     regionCommentMap,
     setRegionCommentMap,
+    isLoadingComments,
+    commentsError,
+    isCommentAdding,
   } = useComments(waveSurferRef, regionsRef);
+
+  const [isSubmittingComment, setIsSubmittingComment] = useState(false);
+
+  // console.log('Right after useComments hook declaration,', { comments, setComments }); 
 
   // console.log("Markers in AudioPlayer, after destruc useComments:•", markers);
 
@@ -101,8 +109,8 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
       const clickPositionX = e.clientX - waveformRef.current.getBoundingClientRect().left;
       const clickTime = waveSurferRef.current.getDuration() * (clickPositionX / waveformRef.current.offsetWidth);
 
-      console.log('About to add region. Current regions:', regionsRef.current.regions);
-      console.log('[debouncedHandleDoubleClick] Calculated clickTime:', clickTime);
+      // console.log('About to add region. Current regions:', regionsRef.current.regions);
+      // console.log('[debouncedHandleDoubleClick] Calculated clickTime:', clickTime);
       const region = regionsRef.current.addRegion({
         start: clickTime,
         color: 'rgba(255, 165, 0, 0.5)',
@@ -110,7 +118,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
         resize: false,
       });
 
-      console.log('[debouncedHandleDoubleClick] Setting regionParams:', { id: region.id, start: clickTime, end: clickTime + 1, color: 'rgba(255, 165, 0, 0.5)' });
+      // console.log('[debouncedHandleDoubleClick] Setting regionParams:', { id: region.id, start: clickTime, end: clickTime + 1, color: 'rgba(255, 165, 0, 0.5)' });
       setRegionParams({
         id: region.id,
         start: clickTime,
@@ -148,51 +156,51 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
 
       waveSurferRef.current = ws;
 
-      console.log("WaveSurfer instance created:", ws);
+      // console.log("WaveSurfer instance created:", ws);
 
       // Register the Regions plugin and keep a reference in a ref or state
       const regionsPlugin = ws.registerPlugin(RegionsPlugin.create())
       regionsRef.current = regionsPlugin;
 
-      console.log("Regions plugin registered:", regionsPlugin);
+      // console.log("Regions plugin registered:", regionsPlugin);
 
       const trackUrl = encodeURI(`${process.env.NEXT_PUBLIC_BACKEND_URL}/${track.filePath}`);
       waveSurferRef.current.load(trackUrl);
 
       ws.on('decode', () => {
-        console.log('Track loaded');
+        // console.log('Track loaded');
       });
 
       ws.on('ready', () => {
         setIsLoading(false); // Set loading state to false when WaveSurfer is ready
         setWaveSurferReady(true);
-        console.log('WaveSurfer is ready. Duration:', ws.getDuration());
+        // console.log('WaveSurfer is ready. Duration:', ws.getDuration());
 
         // Listener for region clicks
         regionsPlugin.on('region-clicked', (region, event) => {
-          console.log('--- Region Click Event ---'); // Mark the start of region click event logs
-          console.log('event.target:', event.target);
-          console.log('event.currentTarget:', event.currentTarget);
+          // console.log('--- Region Click Event ---'); // Mark the start of region click event logs
+          // console.log('event.target:', event.target);
+          // console.log('event.currentTarget:', event.currentTarget);
 
           // event.stopPropagation(); // prevent triggering click on the waveform
           // console.log('Region clicked. Region.id:', region.id);
-          console.log('Region clicked. Region:•', region);
-          console.log('Region id:•', region.id);
+          // console.log('Region clicked. Region:•', region);
+          // console.log('Region id:•', region.id);
 
           const markerData = region.data as Marker;
-          console.log('Marker data:', markerData);
+          // console.log('Marker data:', markerData);
 
           const waveSurferRegionID = region.id;
-          console.log('waveSurferRegionID in region-clicked:•', waveSurferRegionID);
+          // console.log('waveSurferRegionID in region-clicked:•', waveSurferRegionID);
 
           const commentId = regionCommentMap[waveSurferRegionID];
-          console.log('Comment ID (from map) in region-clicked:•', commentId);
-          console.log('regionCommentMap in region-clicked:•', regionCommentMap);
+          // console.log('Comment ID (from map) in region-clicked:•', commentId);
+          // console.log('regionCommentMap in region-clicked:•', regionCommentMap);
 
           setSelectedCommentId(commentId || null);
           setSelectedRegionId(region.id);
-          console.log('Updated selectedCommentId:•', commentId || null);
-          console.log('Updated selectedRegionId:•', region.id);
+          // console.log('Updated selectedCommentId:•', commentId || null);
+          // console.log('Updated selectedRegionId:•', region.id);
 
           // If comments panel is not shown, open it
           if (!showComments) {
@@ -201,13 +209,13 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
 
             // If there is a previously selected region
             if (selectedRegionIdRef.current) {
-              console.log('Regions:', regionsRef.current?.regions);
-              console.log('Previous selectedRegionId:', selectedRegionIdRef.current);
+              // console.log('Regions:', regionsRef.current?.regions);
+              // console.log('Previous selectedRegionId:', selectedRegionIdRef.current);
 
               const prevRegionIndex = regionsRef.current?.regions.findIndex((region) => region.id === selectedRegionIdRef.current);
               const prevRegion = regionsRef.current?.regions[prevRegionIndex];
 
-              console.log('Previous region:', prevRegion);
+              // console.log('Previous region:', prevRegion);
 
               if (prevRegion) {
                 prevRegion.setOptions({ color: 'rgba(255, 0, 0, 0.5)' }); // Reset previous region color
@@ -229,7 +237,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
 
               selectedRegionIdRef.current = null; // Update state to reflect that no region is selected
             }
-            console.log('New selectedRegionId:', selectedRegionIdRef.current);
+            // console.log('New selectedRegionId:', selectedRegionIdRef.current);
 
             // Optional: Perform actions based on the selected region, such as displaying a comment related to this marker
           });
@@ -325,66 +333,91 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
     };
   }, [loadRegions, regionCommentMap]);
 
-  useEffect(() => {
-    if (track.id && !isLoading) {
-      fetchCommentsAndMarkers(track.id)
-        .then(() => {
-          // console.log('Comments and markers fetched successfully.•');
-          // console.log('Markers:•', markers); // Log the markers array
-          // Populate regionCommentMap here
-          const newRegionCommentMap: Record<string, number> = markers.reduce((map: Record<string, number>, marker) => {
-            if (marker.waveSurferRegionID && marker.commentId) {
-              // console.log('Mapping waveSurferRegionID to commentId:•', marker.waveSurferRegionID, marker.commentId);
-              map[marker.waveSurferRegionID] = marker.commentId;
-            } else {
-              console.log('Invalid marker:•', marker); // Log markers with missing waveSurferRegionID or commentId
-            }
-            return map;
-          }, {});
-          // console.log('New regionCommentMap:•', newRegionCommentMap);
-          setRegionCommentMap(newRegionCommentMap); // Use the setRegionCommentMap from useComments
-        })
-        .catch(error => console.error('Error fetching comments and markers:•', error));
-    }
-  }, [track.id, isLoading, setRegionCommentMap]);
+  // useEffect(() => {
+  //   if (track.id && !isLoading && !isCommentAdding) { // Include isCommentAdding 
+  //     const fetchAndSetData = async () => { // Create an inner function
+  //       console.log("Before calling fetchCommentsAndMarkers", track.id);
+  //       try {
+  //         await fetchCommentsAndMarkers(track.id); 
+  //         console.log('Comments array inside AudioPlayer from track.id useEffect:', comments);
+  //       } catch (error) {
+  //         console.error('Error fetching comments and markers:', error);
+  //       }
+  //     }
+  
+  //     fetchAndSetData(); // Call the inner function
+  //   }
+  // }, [track.id, isLoading, isCommentAdding, comments]);
 
-  const handleCommentSubmit = async (submittedComment) => {
-    console.log('[handleCommentSubmit] Current regionParams:', regionParams);
-    console.log('Submitted comment:', submittedComment);
+  useEffect(() => {
+    if (track.id && !isLoading && !isCommentAdding) {
+      console.log("Before calling fetchCommentsAndMarkers", track.id);
+  
+      const fetchAndSetData = async () => {
+        try {
+          await fetchCommentsAndMarkers(track.id); 
+          console.log('Comments array inside AudioPlayer from track.id useEffect:', comments);
+        } catch (error) {
+          console.error('Error fetching comments and markers:', error);
+        }
+      };
+  
+      fetchAndSetData(); // Call the inner function
+    }
+  }, [track.id, isLoading, isCommentAdding, fetchCommentsAndMarkers]);
+  
+  const addUniqueComment = (newComment, existingComments) => {
+    // Assuming each comment has a unique 'id' or you can use a combination of properties
+    const duplicate = existingComments.find(comment => comment.id === newComment.id);
+    return duplicate ? existingComments : [newComment, ...existingComments];
+  };  
+
+  const handleCommentSubmit = async (submittedComment: string) => {
 
     if (!user || !token) {
       console.error("User or token not available");
       return;
     }
-
-    console.log('token inside handleCommentSubmit:', token)
-
+  
+    if (!submittedComment.trim()) {
+      console.error('Comment is empty');
+      return;
+    }
+  
+    const startTime = regionParams.start ?? 0;
+    if (isNaN(startTime) || !regionParams.id) {
+      console.error('Invalid input data', submittedComment, startTime, regionParams.id);
+      return;
+    }
+  
+    const tempId = Date.now(); // Use a timestamp as a temporary ID
+    const newComment = {
+      trackId: track.id,
+      content: submittedComment,
+      time: startTime,
+      waveSurferRegionID: regionParams.id,
+      createdAt: new Date().toISOString(),
+      user: { id: user.id, name: user.name },
+    };
+  
+    setComments(prev => [newComment, ...prev]);
+    setModalOpen(false);
+    setComment('');
+    setIsSubmittingComment(true);
+  
     try {
-      if (regionParams && !isNaN(regionParams.start)) {
-        const startTime = regionParams.start ?? 0; 
-        const { id: waveSurferRegionID } = regionParams; // Destructure without 'start'
-    
-        // Log the request payload for debugging
-        console.log('Sending request to add comment with marker & region:', {
-          trackId: track.id,
-          content: submittedComment,
-          time: startTime,
-          waveSurferRegionID,
-          token: token
-        });
-    
-        await addMarkerAndComment(track.id, submittedComment, startTime, waveSurferRegionID, token); 
-      } else {
-        console.log("No marker associated with this comment (skipping marker creation).");
-      }
+      const result = await addMarkerAndComment(track.id, submittedComment, startTime, regionParams.id, token);
+      setComments(prev => prev.map(comment => comment.id === tempId ? {...result, id: result.comment.id} : comment));
       console.log("Comment (and potentially marker) added successfully");
-      setModalOpen(false);
-      setComment('');
     } catch (error) {
       console.error("Error submitting comment (and marker):", error);
+      // Rollback optimistic update if necessary
+      // setComment(prev => prev.filter(c => c !== newComment));
+      setComments(prev => prev.filter(comment => comment.id !== tempId));
+    } finally {
+      setIsSubmittingComment(false);
     }
-
-  };
+  };  
 
   // Handle play/pause when isPlaying changes or component mounts
   useEffect(() => {
@@ -441,6 +474,14 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
     setVolume(newVolume);
     wavesurferRef.current?.setVolume(newVolume);
   };
+
+  useEffect(() => {
+    // This hook is intended to log and potentially act on inconsistencies found in comment data
+    if (selectedCommentId === null && comments.length > 0) {
+      console.log('Checking state integrity after update:', comments);
+      // Here, you could also invoke any corrective actions if inconsistencies are found
+    }
+  }, [comments, selectedCommentId]);  
 
   return (
     <div>

@@ -33,15 +33,12 @@ const CommentsPanel: React.FC<CommentsPanelProps> = ({
 }) => {
   const { user, token, loading: authLoading } = useAuth();
   // TODO: Refactor so CommentsProvider handles newComment and setNewComment.
-  const { 
-    comments, 
-    setComments, 
-    addComment, 
-    fetchCommentsAndMarkers, 
-    selectedCommentId, 
-    setSelectedCommentId,
-    selectedRegionId,
-    setSelectedRegionId, 
+  const {
+    comments,
+    setComments,
+    addComment,
+    fetchCommentsAndMarkers,
+    selectedCommentId,
     regionCommentMap,
     handleSelectComment,
   } = useComments(waveSurferRef, regionsRef);
@@ -49,12 +46,12 @@ const CommentsPanel: React.FC<CommentsPanelProps> = ({
   const [newComment, setNewComment] = useState<string>('');
   const commentBlockRefs = useRef<(HTMLDivElement | null)[]>([]);
   const [isCommentInputFocused, setIsCommentInputFocused] = useState(false); // Local state for input
-
   const { setIsCommentInputFocused: setIsFocusedFromContext } = usePlayback();
+  const [isPostingComment, setIsPostingComment] = useState(false);
 
   // Update PlaybackContext when local state changes
   useEffect(() => {
-      setIsFocusedFromContext(isCommentInputFocused);
+    setIsFocusedFromContext(isCommentInputFocused);
   }, [isCommentInputFocused, setIsFocusedFromContext]);
 
   // Function to assign a ref to the ref object
@@ -74,7 +71,11 @@ const CommentsPanel: React.FC<CommentsPanelProps> = ({
 
   useEffect(() => {
     if (trackId > 0) {
-      fetchCommentsAndMarkers(trackId, 1, 10);
+      const fetchData = async () => { // Ensures `await` can be used
+        await fetchCommentsAndMarkers(trackId, 1, 10);
+      }
+
+      fetchData(); // Call the async function 
     }
   }, [trackId]);
 
@@ -88,19 +89,21 @@ const CommentsPanel: React.FC<CommentsPanelProps> = ({
       });
     }
   }, [selectedCommentId]);
-  
-
-  // useEffect(() => {
-  //   console.log("CommentsPanel comments: ", comments);
-  // }, [comments]);
 
   // Submitting new comments
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (newComment.trim() && token && user) {
+    if (!newComment.trim() || !token || !user) return;
+
+
+    try {
       await addComment(trackId, user.id, newComment, token);
       setNewComment('');
+      console.log('Comments array after updating state:', comments);
+
       fetchCommentsAndMarkers(trackId, 1, 10); // Refetch comments after adding a new one
+    } finally {
+      setIsPostingComment(false); // End posting regardless of result
     }
   };
 
@@ -129,8 +132,8 @@ const CommentsPanel: React.FC<CommentsPanelProps> = ({
     }
 
     // Call the parent component's onSelectComment handler
-    onSelectComment(commentId); 
-  }, [regionCommentMap, onSelectComment]); 
+    onSelectComment(commentId);
+  }, [regionCommentMap, onSelectComment]);
 
   useEffect(() => {
     console.log('Selected Comment ID in CommentsPanel:', selectedCommentId);
@@ -146,7 +149,7 @@ const CommentsPanel: React.FC<CommentsPanelProps> = ({
 
   if (!show) return null;
 
-  // console.log(commentsArray);
+  console.log('CommentsPanel rendered, comments:', comments);
 
   return (
     <div className={`fixed top-0 right-0 h-full w-64 bg-white shadow-lg transform transition-transform duration-300 z-10 ${show ? 'translate-x-0 overflow-y-auto' : 'translate-x-full'}`}>
@@ -166,20 +169,22 @@ const CommentsPanel: React.FC<CommentsPanelProps> = ({
             Post
           </button>
         </form>
+        {isPostingComment && <div className="p-2 border">Loading comment...</div>}
         {comments.length > 0 ? (
           comments.map((comment, index) => (
-            <CommentBlock
-            key={comment.id}
-            comment={comment}
-            onSelectComment={handleSelectComment}
-            isSelected={comment.id === selectedCommentId}
-            handleCommentClick={handleCommentClick}
-            ref={(el) => setCommentBlockRef(el, comment.id)}
-            index={index}
-            />)
-          )
+            <React.Fragment key={comment.id}>
+                <CommentBlock
+                  comment={comment}
+                  onSelectComment={handleSelectComment}
+                  isSelected={comment.id === selectedCommentId}
+                  handleCommentClick={handleCommentClick}
+                  ref={(el) => setCommentBlockRef(el, comment.id)}
+                  index={index}
+                />
+            </React.Fragment>
+          ))
         ) : (
-          <p>No comments fetched or state not updating correctly.</p>
+          <p>No comments yet.</p>
         )}
       </div>
     </div>
