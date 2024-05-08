@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { AudioControlsProps } from '../../../types/types'; 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faPlay, faPause, faForward, faBackward, faStepForward, faStepBackward, faHeart } from '@fortawesome/free-solid-svg-icons';
-import { usePlayback } from '@/hooks/UsePlayback';
+import { useMusic } from '@/hooks/UseMusic';
 
 const AudioControls: React.FC<AudioControlsProps> = ({
   isPlaying,
@@ -20,7 +20,7 @@ const AudioControls: React.FC<AudioControlsProps> = ({
   modalOpen, 
 }) => {
 
-const { spacebarPlaybackEnabled, toggleSpacebarPlayback, isCommentInputFocused } = usePlayback();
+const { spacebarPlaybackEnabled, toggleSpacebarPlayback, isCommentInputFocused } = useMusic();
 
 useEffect(() => {
   const handleKeyDown = (event: KeyboardEvent) => {

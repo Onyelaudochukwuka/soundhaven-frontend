@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Track } from '../../types/types';
-import { useTracks } from '@/hooks/UseTracks';
+import { useMusic } from '@/hooks/UseMusic';
 
 interface EditTrackFormProps {
   track: Track;
@@ -9,7 +9,7 @@ interface EditTrackFormProps {
 }
 
 const EditTrackForm: React.FC<EditTrackFormProps> = ({ track, closeModal, fetchTracks }) => {
-  const { updateTrackMetadata } = useTracks();
+  const { updateTrackMetadata } = useMusic();
   const [name, setName] = useState(track.name);
   const [artistName, setArtistName] = useState(track.artist?.name || '');
   const [albumName, setAlbumName] = useState(track.album?.name || '');

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useTracks } from '@/hooks/UseTracks';
+import { useMusic } from '@/hooks/UseMusic';
 import { Track } from '../../types/types';
 
 interface FileUploadProps {
@@ -8,7 +8,7 @@ interface FileUploadProps {
 
     const FileUpload: React.FC<FileUploadProps> = ({ onUploadSuccess }) => {
         const [uploading, setUploading] = useState(false);
-    const { uploadTrack } = useTracks(); // Use the `useTracks` hook
+    const { uploadTrack } = useMusic()
 
     const extractTitleFromFileName = (fileName: string) => {
         // Remove file extension and replace underscores/dashes with spaces

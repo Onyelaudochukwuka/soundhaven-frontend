@@ -7,7 +7,7 @@ import CommentBlock from './CommentBlock';
 import { useRef } from 'react';
 import WaveSurfer from 'wavesurfer.js';
 import RegionsPlugin from 'wavesurfer.js/dist/plugins/regions';
-import { usePlayback } from '@/hooks/UsePlayback';
+import { useMusic } from '@/hooks/UseMusic';
 
 interface CommentsPanelProps {
   trackId: number;
@@ -46,7 +46,7 @@ const CommentsPanel: React.FC<CommentsPanelProps> = ({
   const [newComment, setNewComment] = useState<string>('');
   const commentBlockRefs = useRef<(HTMLDivElement | null)[]>([]);
   const [isCommentInputFocused, setIsCommentInputFocused] = useState(false); // Local state for input
-  const { setIsCommentInputFocused: setIsFocusedFromContext } = usePlayback();
+  const { setIsCommentInputFocused: setIsFocusedFromContext } = useMusic();
   const [isPostingComment, setIsPostingComment] = useState(false);
 
   // Update PlaybackContext when local state changes

@@ -6,8 +6,7 @@ import { fetchArtists, fetchAlbums } from '../services/apiService';
 import Modal from './Modal'; // Import your modal component
 import EditTrackForm from './EditTrackForm';
 import { serializeValue } from '@/utils/utils';
-import { useTracks } from '@/hooks/UseTracks';
-import { usePlayback } from '@/hooks/UsePlayback';
+import { useMusic } from '@/hooks/UseMusic';
 
 interface TracksTableProps {
   tracks: Track[];
@@ -17,8 +16,8 @@ interface TracksTableProps {
 }
 
 const TracksTable: React.FC<TracksTableProps> = ({ onSelectTrack, onDelete, onUpdate }) => {
-  const { selectTrack, currentTrack } = usePlayback();
-  const { tracks, fetchTracks, deleteTrack } = useTracks();
+  const { selectTrack, currentTrack } = useMusic();
+  const { tracks, fetchTracks, deleteTrack } = useMusic();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTrack, setEditingTrack] = useState<Track | null>(null);

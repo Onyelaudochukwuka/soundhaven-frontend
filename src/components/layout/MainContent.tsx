@@ -4,24 +4,23 @@ import TracksTable from '../TracksTable';
 import ErrorMessage from '../ErrorMessage';
 import AudioPlayer from '../audioPlayer/AudioPlayer';
 import CommentsPanel from '../comments/CommentsPanel';
-import { useTracks } from '@/hooks/UseTracks';
-import { PlaybackContext } from '@/contexts/PlaybackContext';
+import { useMusic } from '@/hooks/UseMusic';
+import { MusicContext } from '@/contexts/MusicContext';
 import { Track, Comment } from '../../../types/types';
 import { useComments } from '@/hooks/UseComments';
 import WaveSurfer from 'wavesurfer.js';
 import RegionsPlugin from 'wavesurfer.js/dist/plugins/regions.js';
-import { usePlayback } from '@/hooks/UsePlayback';
 
 interface MainContentProps {
   error: string;
 }
 
 const MainContent: React.FC<MainContentProps> = ({ error }) => {
-  const { isPlaying, currentTrack, currentTrackIndex, togglePlayback, selectTrack } = useContext(PlaybackContext)!;
+  const { isPlaying, currentTrack, currentTrackIndex, togglePlayback, selectTrack } = useContext(MusicContext)!;
   const [showComments, setShowComments] = useState(false);
   const selectedTrackId = currentTrack?.id ?? 0;
   const [fetchError, setFetchError] = useState<string | null>(null);
-  const { setIsCommentInputFocused } = usePlayback();
+  const { setIsCommentInputFocused } = useMusic();
 
 
   const { 
@@ -34,7 +33,7 @@ const MainContent: React.FC<MainContentProps> = ({ error }) => {
   } = useComments();
   
   const [isLoading, setIsLoading] = useState(false);
-  const { tracks, fetchTracks, deleteTrack, updateTrack } = useTracks();
+  const { tracks, fetchTracks, deleteTrack, updateTrack } = useMusic();
 
   const regionsRef = useRef<RegionsPlugin | null>(null);
   const waveSurferRef = useRef<WaveSurfer | null>(null);

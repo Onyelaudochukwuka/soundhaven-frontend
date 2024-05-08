@@ -7,12 +7,7 @@ import { backendUrl } from '@/services/apiService';
 export const TracksProvider: React.FC<{ children: React.ReactNode }> = ({ children }): ReactElement | null => {
   const [tracks, setTracks] = useState<Track[]>([]);
   const [currentTrackIndex, setCurrentTrackIndex] = useState<number | null>(null);
-  const [currentPlaylistId, setCurrentPlaylistId] = useState<string | null>(null);
-
-  const startPlayback = (trackIndex: number) => {
-    setCurrentTrackIndex(trackIndex);
-    // ... logic to initiate audio playback
-  };
+  const [currentPlaylistId, setCurrentPlaylistId] = useState<string | null>(null); 
 
   const fetchTrack = async (id: number): Promise<Track | undefined> => {
     try {
