@@ -12,6 +12,8 @@ export const PlaybackProvider: FC<PlaybackProviderProps> = ({ children }) => {
     const [currentTrackIndex, setCurrentTrackIndex] = useState(-1);
     const [spacebarPlaybackEnabled, setSpacebarPlaybackEnabled] = useState(true);
     const [isCommentInputFocused, setIsCommentInputFocused] = useState(false); 
+    const [playbackSpeed, setPlaybackSpeed] = useState(1.0);
+    const [volume, setVolume] = useState(1.0);
 
     const toggleSpacebarPlayback = useCallback(() => {
         setSpacebarPlaybackEnabled(prevEnabled => !prevEnabled);
@@ -56,7 +58,11 @@ export const PlaybackProvider: FC<PlaybackProviderProps> = ({ children }) => {
               spacebarPlaybackEnabled, 
               toggleSpacebarPlayback,
               isCommentInputFocused, 
-              setIsCommentInputFocused 
+              setIsCommentInputFocused,
+              playbackSpeed,
+              setPlaybackSpeed,
+              volume,
+              setVolume,
               }
             }
         >
