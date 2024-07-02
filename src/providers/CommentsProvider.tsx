@@ -1,8 +1,8 @@
 // CommentsProvider.tsx
 import React, { FunctionComponent, useState, useEffect, useContext, useCallback, ReactNode } from 'react';
 import CommentsContext from '@/contexts/CommentsContext';
-import { PlaybackContext } from '@/contexts/PlaybackContext'; // Ensure correct path
-import { _Comment, Marker } from '../../types/types'; // Adjust the import path as needed
+import { PlaybackContext } from '@/contexts/PlaybackContext';
+import { _Comment, Marker } from '../../types/types';
 import { backendUrl } from '@/services/apiService';
 // import { CommentsContextType } from '../../types/types';
 

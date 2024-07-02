@@ -22,32 +22,14 @@ import { CustomRegionWrapper } from './CustomRegion';
 
 interface AudioPlayerProps {
   track: Track;
-  isFavorite: boolean;
-  onToggleFavorite: () => void;
-  playbackSpeed: number;
-  onPlaybackSpeedChange: (speed: number) => void;
-  volume: number;
-  onVolumeChange: (speed: number) => void;
-  onTogglePlay: () => void;
-  onSelectComment: (commentId: number) => void;
-  showComments: boolean;
-  toggleComments: () => void;
 }
 
 
 const AudioPlayer: React.FC<AudioPlayerProps> = ({
-  track,
-  onTogglePlay,
-  isFavorite,
-  onToggleFavorite,
-  playbackSpeed,
-  volume,
-  onSelectComment,
-  toggleComments,
-  showComments,
+  track
 }) => {
   const { user, token } = useAuth();
-  const { currentTrack, isPlaying, togglePlayback } = usePlayback();
+  const { currentTrack, isPlaying, togglePlayback, playbackSpeed, setPlaybackSpeed, volume, setVolume } = usePlayback();
 
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMarkers, setIsLoadingMarkers] = useState(false);
@@ -81,8 +63,8 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
     setSelectedCommentId,
     selectedRegionId,
     setSelectedRegionId,
-    regionCommentMap,
     setRegionCommentMap,
+    regionCommentMap,
     isLoadingComments,
     commentsError,
     isCommentAdding,
@@ -133,13 +115,10 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
   const handleRegionClick = useCallback((regionId) => {
     const commentId = regionCommentMap[regionId];
     if (commentId) {
-      onSelectComment(commentId); // Assume onSelectComment updates the selectedCommentId in shared state/context
-      if (!showComments) {
-        toggleComments(); // This function should change the state to make CommentsPanel visible
-      }
+      setSelectedCommentId(commentId); // Directly update the selectedCommentId
     }
-  }, [regionCommentMap, onSelectComment, showComments, toggleComments]);
-
+  }, [regionCommentMap, setSelectedCommentId]);
+  
   // Main hook for waveform initialization
   useEffect(() => {
 
@@ -178,55 +157,29 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
 
         // Listener for region clicks
         regionsPlugin.on('region-clicked', (region, event) => {
-          // console.log('--- Region Click Event ---'); // Mark the start of region click event logs
-          // console.log('event.target:', event.target);
-          // console.log('event.currentTarget:', event.currentTarget);
-
-          // event.stopPropagation(); // prevent triggering click on the waveform
-          // console.log('Region clicked. Region.id:', region.id);
-          // console.log('Region clicked. Region:•', region);
-          // console.log('Region id:•', region.id);
 
           const markerData = region.data as Marker;
-          // console.log('Marker data:', markerData);
 
           const waveSurferRegionID = region.id;
-          // console.log('waveSurferRegionID in region-clicked:•', waveSurferRegionID);
-
           const commentId = regionCommentMap[waveSurferRegionID];
-          // console.log('Comment ID (from map) in region-clicked:•', commentId);
-          // console.log('regionCommentMap in region-clicked:•', regionCommentMap);
 
           setSelectedCommentId(commentId || null);
           setSelectedRegionId(region.id);
-          // console.log('Updated selectedCommentId:•', commentId || null);
-          // console.log('Updated selectedRegionId:•', region.id);
-
-          // If comments panel is not shown, open it
-          if (!showComments) {
-            toggleComments();
-          }
 
             // If there is a previously selected region
             if (selectedRegionIdRef.current) {
-              // console.log('Regions:', regionsRef.current?.regions);
-              // console.log('Previous selectedRegionId:', selectedRegionIdRef.current);
 
               const prevRegionIndex = regionsRef.current?.regions.findIndex((region) => region.id === selectedRegionIdRef.current);
               const prevRegion = regionsRef.current?.regions[prevRegionIndex];
 
-              // console.log('Previous region:', prevRegion);
-
               if (prevRegion) {
                 prevRegion.setOptions({ color: 'rgba(255, 0, 0, 0.5)' }); // Reset previous region color
-                // console.log('Previous region color changed:', region.id, region.color);
               }
             }
 
             // Highlight the clicked region and update the selected region only if it's different from the current one
             if (selectedRegionIdRef.current !== region.id) {
               region.setOptions({ color: 'rgba(0, 255, 0, 0.7)' }); // Change color
-              // console.log('Current region color changed:', region.id, region.color);
 
               selectedRegionIdRef.current = region.id; // Update state to reflect the newly selected region
 
@@ -501,10 +454,10 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
             onPlaybackSpeedChange={handlePlaybackSpeedChange}
             onToggleFavorite={handleToggleFavorite}
             onVolumeChange={handleVolumeChange}
-            isFavorite={isFavorite}
+            // isFavorite={isFavorite}
             playbackSpeed={playbackSpeed}
             volume={volume}
-            onTogglePlay={togglePlayback}
+            // onTogglePlay={togglePlayback}
           />
         </div>
 

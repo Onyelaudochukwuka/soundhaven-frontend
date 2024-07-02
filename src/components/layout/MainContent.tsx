@@ -1,28 +1,25 @@
-import React, { useState, useContext, useRef } from 'react';
+import React, { useState, useContext, useRef, useEffect } from 'react';
 import FileUpload from '../FileUpload';
 import TracksTable from '../TracksTable';
 import ErrorMessage from '../ErrorMessage';
 import AudioPlayer from '../audioPlayer/AudioPlayer';
 import CommentsPanel from '../comments/CommentsPanel';
 import { useTracks } from '@/hooks/UseTracks';
-import { PlaybackContext } from '@/contexts/PlaybackContext';
+import { usePlayback } from '@/hooks/UsePlayback';
 import { Track, Comment } from '../../../types/types';
 import { useComments } from '@/hooks/UseComments';
 import WaveSurfer from 'wavesurfer.js';
 import RegionsPlugin from 'wavesurfer.js/dist/plugins/regions.js';
-import { usePlayback } from '@/hooks/UsePlayback';
 
 interface MainContentProps {
   error: string;
 }
 
 const MainContent: React.FC<MainContentProps> = ({ error }) => {
-  const { isPlaying, currentTrack, currentTrackIndex, togglePlayback, selectTrack } = useContext(PlaybackContext)!;
+  const { isPlaying, currentTrack, currentTrackIndex, togglePlayback, selectTrack, setIsCommentInputFocused } = usePlayback();
   const [showComments, setShowComments] = useState(false);
   const selectedTrackId = currentTrack?.id ?? 0;
   const [fetchError, setFetchError] = useState<string | null>(null);
-  const { setIsCommentInputFocused } = usePlayback();
-
 
   const { 
     comments, 
@@ -41,7 +38,10 @@ const MainContent: React.FC<MainContentProps> = ({ error }) => {
 
   const [selectedCommentId, setSelectedCommentId] = useState<number | null>(null);
 
-  
+  // Load tracks when the component mounts
+  useEffect(() => {
+    fetchTracks();
+  }, []);
 
   // Update the handleUploadSuccess function to use fetchTracks directly
   const handleUploadSuccess = async () => {
@@ -119,6 +119,18 @@ const MainContent: React.FC<MainContentProps> = ({ error }) => {
     setSelectedCommentId(commentId);
   };
 
+    // Determine the default track
+    const defaultTrack: Track = tracks.length > 0 ? tracks[0] : {
+      id: 0,
+      name: 'Careless Whisper',
+      duration: 0,
+      filePath: 'careless_whisper.mp3',
+      createdAt: '',
+      updatedAt: '',
+      playlists: [],
+      genres: []
+    };
+
   return (
     <main className="flex flex-col p-4 mx-auto w-full">
       {/* Button to manually fetch tracks */}
@@ -135,24 +147,20 @@ const MainContent: React.FC<MainContentProps> = ({ error }) => {
       {fetchError && <ErrorMessage message={fetchError} />}
 
       <div className='w-full px-8 items-center'>
-        {currentTrack && (
-
           <div className="audio-player-container w-full max-w-3xl mx-auto">
             <AudioPlayer
-              track={currentTrack}
-              isPlaying={isPlaying}
-              onTogglePlay={togglePlayback}
-              comments={comments}
+              track={currentTrack || defaultTrack}
+              // isPlaying={isPlaying}
+              // onTogglePlay={togglePlayback}
+              // comments={comments}
               addMarkerAndComment={addMarkerAndComment}
-              setSelectedCommentId={setSelectedCommentId}
+              // setSelectedCommentId={setSelectedCommentId}
               handleCommentClick={handleCommentClick} 
               onSelectComment={handleCommentSelected}
               showComments={showComments}
               toggleComments={toggleComments}
               />
           </div>
-        )}
-
       </div>
       <FileUpload onUploadSuccess={handleUploadSuccess} />
       <TracksTable
@@ -172,7 +180,7 @@ const MainContent: React.FC<MainContentProps> = ({ error }) => {
           regionsRef={regionsRef}
           waveSurferRef={waveSurferRef}
           handleCommentClick={handleCommentClick}
-          selectedCommentId={selectedCommentId}
+          // selectedCommentId={selectedCommentId}
           setIsCommentInputFocused={setIsCommentInputFocused}
           />
       )}

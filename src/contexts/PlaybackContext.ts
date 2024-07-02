@@ -13,6 +13,10 @@ export interface PlaybackContextValue {
     toggleSpacebarPlayback: () => void;
     isCommentInputFocused: boolean;
     setIsCommentInputFocused: (isFocused: boolean) => void;
+    playbackSpeed: number;
+    setPlaybackSpeed: (speed: number) => void;
+    volume: number;
+    setVolume: (volume: number) => void;
 }
 
 const initialPlaybackContextValue: PlaybackContextValue = {
@@ -26,7 +30,11 @@ const initialPlaybackContextValue: PlaybackContextValue = {
     spacebarPlaybackEnabled: true,
     toggleSpacebarPlayback: () => {},
     isCommentInputFocused: false,   
-    setIsCommentInputFocused: () => {}
+    setIsCommentInputFocused: () => {},
+    playbackSpeed: 1.0,
+    setPlaybackSpeed: () => {},
+    volume: 1.0,
+    setVolume: () => {},
 };
 
 export const PlaybackContext = createContext<PlaybackContextValue>(initialPlaybackContextValue);

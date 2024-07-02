@@ -24,7 +24,7 @@ export const useComments = (
     setSelectedRegionId,
     regionCommentMap,
     setRegionCommentMap,
-  } = useContext(CommentsContext); // Destructure context values
+  } = useContext(CommentsContext);
 
   const [newCommentInput, setNewCommentInput] = useState('');
 
@@ -68,7 +68,7 @@ export const useComments = (
         waveSurferRef.current.seekTo(region.start / waveSurferRef.current.getDuration());
       }
     });
-  }, [regionCommentMap, setSelectedCommentId]);
+  }, [regionCommentMap, setSelectedCommentId, comments, waveSurferRef, regionsRef]);
 
   return { 
     newCommentInput, 
