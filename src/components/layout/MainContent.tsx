@@ -43,6 +43,19 @@ const MainContent: React.FC<MainContentProps> = ({ error }) => {
     fetchTracks();
   }, []);
 
+  // Add useEffect to listen for track changes and clear errors
+  useEffect(() => {
+    console.log("MainContent: Tracks updated", tracks);
+    setFetchError(null);
+  }, [tracks]);
+
+  // Add useEffect to listen for track clearing
+  useEffect(() => {
+    if (tracks.length === 0) {
+      console.log("Tracks cleared in MainContent");
+    }
+  }, [tracks]);
+
   // Update the handleUploadSuccess function to use fetchTracks directly
   const handleUploadSuccess = async () => {
     console.log('MainContent: Handling upload success.');
@@ -105,8 +118,16 @@ const MainContent: React.FC<MainContentProps> = ({ error }) => {
   //   : '';
 
   const toggleComments = () => {
+    console.log("Toggle Comments button clicked");
+    console.log("Toggling comments. Current state:", showComments);
+    console.log("Current track:", currentTrack);
     setShowComments(!showComments);
   };
+
+  useEffect(() => {
+    console.log("Current track:", currentTrack);
+    console.log("Show comments:", showComments);
+  }, [currentTrack, showComments]);
 
   // console.log('Rendering AudioPlayer with track:', currentTrack);
 
@@ -119,12 +140,14 @@ const MainContent: React.FC<MainContentProps> = ({ error }) => {
     setSelectedCommentId(commentId);
   };
 
+  const DEFAULT_TRACK_ID = -1;
+
     // Determine the default track
     const defaultTrack: Track = tracks.length > 0 ? tracks[0] : {
-      id: 0,
+      id: DEFAULT_TRACK_ID,
       name: 'Careless Whisper',
       duration: 0,
-      filePath: 'careless_whisper.mp3',
+      filePath: 'public/careless_whisper.mp3',
       createdAt: '',
       updatedAt: '',
       playlists: [],
@@ -137,7 +160,11 @@ const MainContent: React.FC<MainContentProps> = ({ error }) => {
       {/* <button onClick={handleManualFetch} className="mb-4 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
         Fetch Tracks Manually
       </button> */}
-      <button onClick={toggleComments} className="toggle-comments-btn absolute">
+      <button 
+        onClick={toggleComments} 
+        className={`toggle-comments-btn absolute ${!currentTrack ? 'opacity-50 cursor-not-allowed' : ''}`}
+        disabled={!currentTrack}
+      >
         {showComments ? 'Close Comments' : 'Open Comments'}
       </button>
 
@@ -153,12 +180,12 @@ const MainContent: React.FC<MainContentProps> = ({ error }) => {
               // isPlaying={isPlaying}
               // onTogglePlay={togglePlayback}
               // comments={comments}
-              addMarkerAndComment={addMarkerAndComment}
+              // addMarkerAndComment={addMarkerAndComment}
               // setSelectedCommentId={setSelectedCommentId}
-              handleCommentClick={handleCommentClick} 
-              onSelectComment={handleCommentSelected}
-              showComments={showComments}
-              toggleComments={toggleComments}
+              // handleCommentClick={handleCommentClick} 
+              // onSelectComment={handleCommentSelected}
+              // showComments={showComments}
+              // toggleComments={toggleComments}
               />
           </div>
       </div>

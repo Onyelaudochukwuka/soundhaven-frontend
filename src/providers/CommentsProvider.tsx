@@ -143,10 +143,8 @@ export const CommentsProvider: FunctionComponent<CommentsProviderProps> = ({ chi
       return;
     }
   
-    // console.log(`Sending data * - trackId: ${trackId}, time: ${time}, type of time: ${typeof time}, waveSurferRegionID: ${waveSurferRegionID}`);
+    console.log(`Sending data * - trackId: ${trackId}, time: ${time}, type of time: ${typeof time}, waveSurferRegionID: ${waveSurferRegionID}`);
   
-    console.log('addMarkerAndComment - Before network request, comments:', comments); // Log the state of comments
-
     try {
 
       const response = await fetch(`${backendUrl}/comments/with-marker`, {
@@ -169,6 +167,8 @@ export const CommentsProvider: FunctionComponent<CommentsProviderProps> = ({ chi
         console.error("Error adding comment and marker:", responseData);
         throw new Error(`HTTP error! status: ${response.status}, message: ${responseData.message}`);
       }
+
+      console.error('Detailed error in addCommentWithMarker:', error);
   
       // Assuming responseData structure is { comment: Comment, marker: Marker }
       if (responseData.comment && responseData.marker) {
@@ -195,15 +195,13 @@ export const CommentsProvider: FunctionComponent<CommentsProviderProps> = ({ chi
       console.log('addMarkerAndComment - After successful response, comments:', comments); // Log comments again
   
     } catch (error) {
-      console.error("Error adding comment and marker:", error);
+      console.error("Detailed error in addMarkerAndComment:", error);
       // Rollback any optimistic updates if necessary
     } finally {
       setIsCommentAdding(false); // Reset loading state regardless of success or failure
     }
     console.log('Updated comments array inside addMarkerAndComment, after setCommentIsAdding is set to false:', comments) // Log for state change
   };
-  
-
 
   const addComment = async (trackId: number, userId: number, content: string, token: string) => {
     try {

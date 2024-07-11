@@ -31,6 +31,8 @@ const CommentsPanel: React.FC<CommentsPanelProps> = ({
   onSelectComment,
   // setIsCommentInputFocused,
 }) => {
+  console.log("CommentsPanel rendered. show:", show, "trackId:", trackId);
+
   const { user, token, loading: authLoading } = useAuth();
   // TODO: Refactor so CommentsProvider handles newComment and setNewComment.
   const {
@@ -144,7 +146,7 @@ const CommentsPanel: React.FC<CommentsPanelProps> = ({
   }, [comments]);
 
   if (authLoading) {
-    return <div className="fixed top-0 right-0 h-full w-64 bg-white shadow-lg p-4">Loading comments...</div>;
+    return <div className="fixed top-0 right-0 h-full bg-red-500 w-64 shadow-lg p-4">Loading comments...</div>;
   }
 
   if (!show) return null;

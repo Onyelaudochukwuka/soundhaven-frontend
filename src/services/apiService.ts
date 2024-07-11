@@ -1,4 +1,6 @@
-import { Track, Album, Artist, User, ErrorResponse } from '../../types/types'; // Import necessary types
+import { Track, Album, Artist, User, ErrorResponse } from '../../types/types';
+import { useTracks } from '@/hooks/UseTracks';
+import { useAuth } from '@/hooks/UseAuth';
 
 if (!process.env.NEXT_PUBLIC_BACKEND_URL) {
   throw new Error("Backend URL is not defined in .env.local");
@@ -14,7 +16,6 @@ export const handleResponse = async <T = any>(response: Response): Promise<T> =>
 
       if (contentType?.includes('application/json')) {
         errorData = await response.json();
-        // Handle validation errors specifically if status is 400
         if (response.status === 400 && errorData.errors) {
           const validationErrors = Object.values(errorData.errors).join(', ');
           throw new Error(`Validation error: ${validationErrors}`);
@@ -108,19 +109,19 @@ export const login = async (email: string, password: string) => {
 };
 
 
-export const logout = async () => {
-  const refreshToken = localStorage.getItem('refreshToken'); // Retrieve the refresh token
+export const logoutAPI = async (accessToken: string, refreshToken: string) => {
   try {
     const response = await fetch(`${backendUrl}/auth/logout`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${refreshToken}`, // Use the refresh token
+        'Authorization': `Bearer ${accessToken}`,
       },
+      body: JSON.stringify({ refreshToken })
     });
     return await handleResponse(response);
-  } catch (error: any) {
-    console.error('Error during logout:', error.message);
+  } catch (error) {
+    console.error('Error during logout API call:', error);
     throw error;
   }
 };
@@ -141,6 +142,7 @@ export const deleteAccount = async (userId: number) => {
   }
 };
 
+// Move these functions into providers
 
 // Artists and albums functionality
 export const fetchArtists = async (): Promise<Artist[]> => {

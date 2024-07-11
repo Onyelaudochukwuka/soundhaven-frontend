@@ -24,6 +24,7 @@ export const PlaybackProvider: FC<PlaybackProviderProps> = ({ children }) => {
     }, []);
 
     const selectTrack = useCallback((track: Track, index: number) => {
+        console.log("Selecting track:", track);
         if (currentTrack?.id === track.id && isPlaying) {
             setIsPlaying(false);
         } else {
@@ -48,7 +49,7 @@ export const PlaybackProvider: FC<PlaybackProviderProps> = ({ children }) => {
     return (
         <PlaybackContext.Provider value={
             { 
-              isPlaying, 
+              isPlaying,
               currentTrack, 
               currentTrackIndex, 
               togglePlayback, 

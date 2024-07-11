@@ -11,6 +11,7 @@ interface TracksContextType {
   uploadTrack: (formData: FormData) => Promise<any>; // Specify a more precise type for the response if known
   deleteTrack: (id: number) => Promise<void>;
   updateTrackMetadata: (trackId: number, updatedData: Partial<Track>) => Promise<any>; // Specify a more precise type for the response if known
+  clearTracks: () => void;
 }
 
 // Providing initial values for the context
@@ -18,10 +19,12 @@ const defaultContextValue: TracksContextType = {
   tracks: [],
   setTracks: () => {},
   updateTrack: () => {},
+  fetchTrack: async () => undefined,
   fetchTracks: async () => {},
   uploadTrack: async () => {},
   deleteTrack: async () => {},
   updateTrackMetadata: async () => {},
+  clearTracks: () => {},
 };
 
 // Creating the context with the default value

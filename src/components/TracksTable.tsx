@@ -1,24 +1,34 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faPlay } from '@fortawesome/free-solid-svg-icons';
-import { Track, Artist, Album, Comment, User } from '../../types/types';
-import { fetchArtists, fetchAlbums } from '../services/apiService';
-import Modal from './Modal'; // Import your modal component
-import EditTrackForm from './EditTrackForm';
-import { serializeValue } from '@/utils/utils';
-import { useTracks } from '@/hooks/UseTracks';
-import { usePlayback } from '@/hooks/UsePlayback';
+import React, { useState, useEffect, useCallback } from "react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faPlay } from "@fortawesome/free-solid-svg-icons";
+import { Track, Artist, Album, Comment, User } from "../../types/types";
+import { fetchArtists, fetchAlbums } from "../services/apiService";
+import Modal from "./Modal"; // Import your modal component
+import EditTrackForm from "./EditTrackForm";
+import { serializeValue } from "@/utils/utils";
+import { useTracks } from "@/hooks/UseTracks";
+import { usePlayback } from "@/hooks/UsePlayback";
+import { useAuth } from "@/hooks/UseAuth";
 
 interface TracksTableProps {
   tracks: Track[];
-  onSelectTrack: (trackId: number, trackFilePath: string, trackIndex: number) => void;
+  onSelectTrack: (
+    trackId: number,
+    trackFilePath: string,
+    trackIndex: number
+  ) => void;
   onDelete: (id: number) => void;
   onUpdate: (trackId: number, field: string, value: string) => void;
 }
 
-const TracksTable: React.FC<TracksTableProps> = ({ onSelectTrack, onDelete, onUpdate }) => {
+const TracksTable: React.FC<TracksTableProps> = ({
+  onSelectTrack,
+  onDelete,
+  onUpdate,
+}) => {
   const { selectTrack, currentTrack } = usePlayback();
   const { tracks, fetchTracks, deleteTrack } = useTracks();
+  const { user, token } = useAuth();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTrack, setEditingTrack] = useState<Track | null>(null);
@@ -26,17 +36,18 @@ const TracksTable: React.FC<TracksTableProps> = ({ onSelectTrack, onDelete, onUp
   const [isLoading, setIsLoading] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
 
-
   useEffect(() => {
     const initFetch = async () => {
-      setIsLoading(true);
-      try {
-        await fetchTracks();
-      } catch (err) {
-        setFetchError('Failed to load tracks. Please try again later.'); // Corrected from setError to setFetchError
-        console.error(err);
-      } finally {
-        setIsLoading(false);
+      if (user && token) {
+        setIsLoading(true);
+        try {
+          await fetchTracks();
+        } catch (err) {
+          setFetchError("Failed to load tracks. Please try again later.");
+          console.error(err);
+        } finally {
+          setIsLoading(false);
+        }
       }
     };
     initFetch();
@@ -46,7 +57,6 @@ const TracksTable: React.FC<TracksTableProps> = ({ onSelectTrack, onDelete, onUp
   useEffect(() => {
     console.log("TracksTable: Tracks updated", tracks);
   }, [tracks]);
-
 
   const openModal = (track: Track) => {
     setEditingTrack(track);
@@ -63,10 +73,13 @@ const TracksTable: React.FC<TracksTableProps> = ({ onSelectTrack, onDelete, onUp
     fetchTracks();
   };
 
-  const handleDoubleClickOnRow = useCallback((track: Track, index: number) => {
-    console.log("Track double-clicked:", track);
-    selectTrack(track, index);
-  }, [selectTrack]);
+  const handleDoubleClickOnRow = useCallback(
+    (track: Track, index: number) => {
+      console.log("Track double-clicked:", track);
+      selectTrack(track, index);
+    },
+    [selectTrack]
+  );
 
   const toggleMenu = (id: number, event: React.MouseEvent) => {
     event.stopPropagation();
@@ -78,18 +91,18 @@ const TracksTable: React.FC<TracksTableProps> = ({ onSelectTrack, onDelete, onUp
       // If the click is outside the menu and not on the menu items, close the menu
       if (
         openMenuTrackId !== null &&
-        !event.target.closest('.menu-container') &&
-        !event.target.closest('.menu-item')
+        !event.target.closest(".menu-container") &&
+        !event.target.closest(".menu-item")
       ) {
         setOpenMenuTrackId(null);
       }
     };
-  
+
     // Add event listener
-    document.addEventListener('mousedown', handleClickOutside);
-  
+    document.addEventListener("mousedown", handleClickOutside);
+
     // Remove event listener on cleanup
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [openMenuTrackId]);
 
   return (
@@ -97,23 +110,35 @@ const TracksTable: React.FC<TracksTableProps> = ({ onSelectTrack, onDelete, onUp
       <table className="min-w-full divide-y divide-gray-200">
         <thead className="bg-gray-50">
           <tr>
-            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
-            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Artist</th>
-            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Album</th>
-            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Duration</th>
+            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Title
+            </th>
+            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Artist
+            </th>
+            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Album
+            </th>
+            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Duration
+            </th>
             <th className="px-4 py-2"></th>
           </tr>
         </thead>
         <tbody className="bg-white divide-y divide-gray-200">
           {tracks.map((track, index) => (
-            <tr key={track.id}
+            <tr
+              key={track.id}
               onDoubleClick={() => handleDoubleClickOnRow(track, index)}
-              className={`hover:bg-gray-100 ${track.id === currentTrack?.id ? 'bg-blue-100' : ''}`}
+              className={`hover:bg-gray-100 ${
+                track.id === currentTrack?.id ? "bg-blue-100" : ""
+              }`}
             >
-
               <td className="px-4 py-2">{track.name}</td>
-              <td className="px-4 py-2">{track.artist?.name ?? 'Unknown Artist'}</td>
-              <td className="px-4 py-2">{track.album?.name ?? 'No Album'}</td>
+              <td className="px-4 py-2">
+                {track.artist?.name ?? "Unknown Artist"}
+              </td>
+              <td className="px-4 py-2">{track.album?.name ?? "No Album"}</td>
               <td className="px-4 py-2">{track.duration}</td>
               <td className="px-4 py-2 relative">
                 <button onClick={(e) => toggleMenu(track.id, e)}>•••</button>
@@ -125,7 +150,8 @@ const TracksTable: React.FC<TracksTableProps> = ({ onSelectTrack, onDelete, onUp
                         e.stopPropagation(); // Prevents click from bubbling to the parent element
                         openModal(track);
                         setOpenMenuTrackId(null); // Closes the menu
-                      }}>
+                      }}
+                    >
                       Edit Metadata
                     </button>
                     <button
@@ -134,7 +160,8 @@ const TracksTable: React.FC<TracksTableProps> = ({ onSelectTrack, onDelete, onUp
                         e.stopPropagation(); // Prevents click from bubbling to the parent element
                         await handleDelete(track.id);
                         setOpenMenuTrackId(null); // Closes the menu
-                      }}>
+                      }}
+                    >
                       Delete Track
                     </button>
                   </div>

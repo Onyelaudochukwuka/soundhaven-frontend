@@ -3,27 +3,17 @@ import { TracksContext } from '@/contexts/TracksContext';
 
 // Custom hook to use tracks context
 export function useTracks() {
-  const {
-    tracks,
-    setTracks,
-    fetchTrack,
-    fetchTracks,
-    uploadTrack,
-    deleteTrack,
-    updateTrackMetadata,
-  } = useContext(TracksContext);
+  const context = useContext(TracksContext);
 
-  if (!tracks || !setTracks) {
+  if (!context) {
     throw new Error('useTracks must be used within a TracksProvider');
   }
 
+  // Ensure clearTracks always exists, even if it's a no-op function
+  const clearTracks = context.clearTracks || (() => {});
+
   return {
-    tracks,
-    setTracks,
-    fetchTrack,
-    fetchTracks,
-    uploadTrack,
-    deleteTrack,
-    updateTrackMetadata,
+    ...context,
+    clearTracks,
   };
 }
