@@ -31,16 +31,16 @@ interface AudioPlayerProps {
 
 const AudioPlayer: React.FC<AudioPlayerProps> = ({ track }) => {
   const { user, token } = useAuth();
-  const { 
-    isPlaying, 
-    togglePlayback, 
-    nextTrack, 
-    previousTrack, 
-    playbackSpeed, 
+  const {
+    isPlaying,
+    togglePlayback,
+    nextTrack,
+    previousTrack,
+    playbackSpeed,
     setPlaybackSpeed,
     volume,
     setVolume,
-    currentTrack
+    currentTrack,
   } = usePlayback();
 
   const [isLoading, setIsLoading] = useState(true);
@@ -100,37 +100,43 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ track }) => {
 
   // console.log("Region-Comment Map in AudioPlayer:", regionCommentMap);
 
-  // Debounced double click handler defined with useCallback at the top level
   const debouncedHandleDoubleClick = useCallback(
     debounce((e) => {
-      if (regionsRef.current && waveformRef.current) {
+      if (waveformRef.current && waveSurferRef.current) {
+        const waveformWidth = waveformRef.current.offsetWidth;
         const clickPositionX =
           e.clientX - waveformRef.current.getBoundingClientRect().left;
         const clickTime =
           waveSurferRef.current.getDuration() *
-          (clickPositionX / waveformRef.current.offsetWidth);
+          (clickPositionX / waveformWidth);
 
-        // console.log('About to add region. Current regions:', regionsRef.current.regions);
-        // console.log('[debouncedHandleDoubleClick] Calculated clickTime:', clickTime);
-        const region = regionsRef.current.addRegion({
-          start: clickTime,
-          color: "rgba(255, 165, 0, 0.5)",
-          drag: false,
-          resize: false,
-        });
+        const markerWidthPercentage = 0.005;
+        const markerDuration =
+          waveSurferRef.current.getDuration() * markerWidthPercentage;
+        const endTime = Math.min(
+          clickTime + markerDuration,
+          waveSurferRef.current.getDuration()
+        );
 
-        // console.log('[debouncedHandleDoubleClick] Setting regionParams:', { id: region.id, start: clickTime, end: clickTime + 1, color: 'rgba(255, 165, 0, 0.5)' });
-        setRegionParams({
-          id: region.id,
+        console.log("Calculated marker duration:", markerDuration);
+        console.log("Marker start and end times:", clickTime, endTime);
+        console.log("Waveform width:", waveformWidth);
+        console.log("Click position X:", clickPositionX);
+
+        const newRegionParams = {
+          id: `region-${Date.now()}`,
           start: clickTime,
-          end: clickTime + 1,
+          end: endTime,
           color: "rgba(255, 165, 0, 0.5)",
-        });
+        };
+  
+        console.log("Setting new region params:", newRegionParams);
+        setRegionParams(newRegionParams);
 
         setModalOpen(true);
       }
     }, 300),
-    [setRegionParams]
+    []
   );
 
   const handleRegionClick = useCallback(
@@ -278,36 +284,31 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ track }) => {
   const loadRegions = useMemo(
     () => () => {
       if (waveSurferReady && regionsRef.current && markers.length > 0) {
-        // Clear any existing regions or custom region wrappers
+        // Clear any existing regions
         regionsRef.current.clearRegions();
-        customRegionsRef.current.clear();
-
+  
         markers.forEach((marker) => {
           // Define region parameters
           const regionParams = {
             start: marker.time,
-            end: marker.time + 0.5,
+            end: marker.time + waveSurferRef.current.getDuration() * 0.01,
             color: "rgba(255, 0, 0, 0.5)",
             drag: false,
             resize: false,
           };
-
+  
           // Add region to WaveSurfer instance
           const region = regionsRef.current.addRegion(regionParams);
-
-          // Wrap region with CustomRegionWrapper and pass onSelectRegion
-          const customRegion = new CustomRegionWrapper(
-            region,
-            marker,
-            onSelectRegion
-          );
-
-          // Store custom region wrapper for later use
-          customRegionsRef.current.set(region.id, customRegion);
+          if (region) {
+            // Add click event listener to handle region clicks
+            region.on('click', () => handleRegionClick(region));
+          } else {
+            console.error("Failed to create region", regionParams);
+          }
         });
       }
     },
-    [waveSurferReady, markers, onSelectRegion]
+    [waveSurferReady, markers, handleRegionClick]
   );
 
   useEffect(() => {
@@ -367,6 +368,9 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ track }) => {
   };
 
   const handleCommentSubmit = async (submittedComment: string) => {
+    console.log("handleCommentSubmit called with:", submittedComment);
+    console.log("Current regionParams:", regionParams);
+
     if (!user || !token) {
       console.error("User or token not available");
       return;
@@ -382,14 +386,25 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ track }) => {
       return;
     }
 
-    const startTime = regionParams.start ?? 0;
-    if (isNaN(startTime) || !regionParams.id) {
+    if (!regionParams || !regionParams.id || regionParams.start === undefined || regionParams.end === undefined) {
+      console.error("No valid region params");
+      return;
+    }
+  
+    const startTime = regionParams.start;
+    const endTime = regionParams.end;
+    const duration = endTime - startTime;
+  
+    console.log("Calculated times:", { startTime, endTime, duration });
+
+    if (isNaN(startTime) || isNaN(duration) || !regionParams.id) {
       console.error(
         "Invalid input data",
         submittedComment,
         startTime,
+        duration,
         regionParams.id
-      );
+    );
       return;
     }
 
@@ -398,6 +413,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ track }) => {
       trackId: track.id,
       content: submittedComment,
       time: startTime,
+      duration: duration,
       waveSurferRegionID: regionParams.id,
       createdAt: new Date().toISOString(),
       user: { id: user.id, name: user.name },
@@ -413,22 +429,34 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ track }) => {
         track.id,
         submittedComment,
         startTime,
+        duration,
         regionParams.id,
         token
       );
-      setComments((prev) =>
-        prev.map((comment) =>
-          comment.id === tempId ? { ...result, id: result.comment.id } : comment
-        )
-      );
-      console.log("Comment (and potentially marker) added successfully");
+      if (result) {
+        console.log("Comment (and potentially marker) added successfully", result);
+  
+        // Add the region to the waveform only after successful submission
+        if (regionsRef.current) {
+          const region = regionsRef.current.addRegion({
+            id: result.marker.waveSurferRegionID,
+            start: startTime,
+            end: startTime + duration,
+            color: "rgba(255, 165, 0, 0.5)",
+            drag: false,
+            resize: false,
+          });
+          console.log("Region created:", region);
+        }
+      } else {
+        throw new Error("Failed to add comment and marker");
+      }
     } catch (error) {
       console.error("Error submitting comment (and marker):", error);
-      // Rollback optimistic update if necessary
-      // setComment(prev => prev.filter(c => c !== newComment));
       setComments((prev) => prev.filter((comment) => comment.id !== tempId));
     } finally {
       setIsSubmittingComment(false);
+      setRegionParams({ id: "", start: 0, end: 0 }); // Reset region params
     }
   };
 
@@ -466,21 +494,23 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ track }) => {
     previousTrack(tracks);
   };
 
-  const handleSkipForward = () => {
+  const skipAudio = useCallback((seconds: number) => {
     const wavesurfer = waveSurferRef.current;
     if (wavesurfer) {
       const currentTime = wavesurfer.getCurrentTime();
-      wavesurfer.setCurrentTime(currentTime + 10); // Skip forward 10 seconds
+      const duration = wavesurfer.getDuration();
+      const newTime = Math.min(Math.max(currentTime + seconds, 0), duration);
+      wavesurfer.seekTo(newTime / duration); // seekTo expects a value between 0 and 1
     }
-  };
+  }, []);
 
-  const handleSkipBackward = () => {
-    const wavesurfer = waveSurferRef.current;
-    if (wavesurfer) {
-      const currentTime = wavesurfer.getCurrentTime();
-      wavesurfer.setCurrentTime(Math.max(currentTime - 10, 0)); // Skip backward 10 seconds, but not below 0
-    }
-  };
+  const handleSkipForward = useCallback(() => {
+    skipAudio(2);
+  }, [skipAudio]);
+
+  const handleSkipBackward = useCallback(() => {
+    skipAudio(-2);
+  }, [skipAudio]);
 
   const handlePlaybackSpeedChange = (newSpeed: number) => {
     setPlaybackSpeed(newSpeed);
@@ -527,10 +557,17 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ track }) => {
       )}
 
       {modalOpen && (
-        <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)}>
+        <Modal 
+          isOpen={modalOpen} 
+          onClose={() => {
+            console.log("Modal closing. regionParams:", regionParams);
+            setModalOpen(false)
+          }}
+          >
           <form
             onSubmit={(e) => {
               e.preventDefault();
+              console.log("Form submitted. Current regionParams:", regionParams);
               handleCommentSubmit(comment); // Directly use the comment state
               // setComment(''); // Clear the comment input after submission
             }}
