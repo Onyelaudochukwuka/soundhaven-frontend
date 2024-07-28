@@ -55,11 +55,21 @@ export interface Track {
 
 export interface Playlist {
   id: number;
-  title: string;
+  name: string;
   description?: string;
   userId: number;
   user: User;
-  tracks: Track[];
+  tracks?: Track[];
+  TracksInPlaylist?: { track: Track }[];
+}
+
+export interface PlaylistItem {
+  id: number;
+  trackId: number;
+  playlistId: number;
+  track: Track;
+  playlist: Playlist;
+  position: number;
 }
 
 export interface Genre {

@@ -7,38 +7,38 @@ if (!process.env.NEXT_PUBLIC_BACKEND_URL) {
 }
 export const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
 
-export const handleResponse = async <T = any>(response: Response): Promise<T> => {
-  if (!response.ok) {
-    const clonedResponse = response.clone();
-    try {
-      let errorData: ErrorResponse;
-      const contentType = response.headers.get('content-type');
+  export const handleResponse = async <T = any>(response: Response): Promise<T> => {
+    if (!response.ok) {
+      const clonedResponse = response.clone();
+      try {
+        let errorData: ErrorResponse;
+        const contentType = response.headers.get('content-type');
 
-      if (contentType?.includes('application/json')) {
-        errorData = await response.json();
-        if (response.status === 400 && errorData.errors) {
-          const validationErrors = Object.values(errorData.errors).join(', ');
-          throw new Error(`Validation error: ${validationErrors}`);
+        if (contentType?.includes('application/json')) {
+          errorData = await response.json();
+          if (response.status === 400 && errorData.errors) {
+            const validationErrors = Object.values(errorData.errors).join(', ');
+            throw new Error(`Validation error: ${validationErrors}`);
+          }
+        } else {
+          errorData = { message: await clonedResponse.text() };
         }
-      } else {
-        errorData = { message: await clonedResponse.text() };
+
+        console.error('Error response:', {
+          status: response.status,
+          statusText: response.statusText,
+          errorData,
+        });
+
+        const errorMessage = errorData.message || 'Unknown error occurred';
+        throw new Error(`Error ${response.status}: ${errorMessage}`);
+      } catch (error) {
+        console.error('Error parsing response:', error);
+        throw new Error(`Error parsing server response: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
-
-      console.error('Error response:', {
-        status: response.status,
-        statusText: response.statusText,
-        errorData,
-      });
-
-      const errorMessage = errorData.message || 'Unknown error occurred';
-      throw new Error(`Error ${response.status}: ${errorMessage}`);
-    } catch (error) {
-      console.error('Error parsing response:', error);
-      throw new Error(`Error parsing server response: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
-  }
-  return response.json() as Promise<T>;
-};
+    return response.json() as Promise<T>;
+  };
 
 export const register = async (data: { name?: string; email: string; password: string }) => {
   const { name, email, password } = data;

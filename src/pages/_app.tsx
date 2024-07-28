@@ -6,6 +6,7 @@ import { TracksProvider } from '@/providers/TracksProvider';
 import { AuthProvider } from '@/providers/AuthProvider';
 import { PlaybackProvider } from '@/providers/PlaybackProvider';
 import { CommentsProvider } from '@/providers/CommentsProvider';
+import { PlaylistsProvider } from '@/providers/PlaylistsProvider';
 
 export default function App({ Component, pageProps }: AppProps) {
   return (
@@ -13,7 +14,9 @@ export default function App({ Component, pageProps }: AppProps) {
       <CommentsProvider>
         <TracksProvider>
           <PlaybackProvider>
-            <Component {...pageProps} />
+            <PlaylistsProvider>
+              <Component {...pageProps} />
+            </PlaylistsProvider>
           </PlaybackProvider>
         </TracksProvider>
       </CommentsProvider>

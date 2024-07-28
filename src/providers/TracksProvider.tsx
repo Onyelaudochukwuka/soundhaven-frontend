@@ -16,6 +16,8 @@ export const TracksProvider: React.FC<{ children: React.ReactNode }> = ({
     null
   );
   const { token, refreshToken, setToken } = useAuth();
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [doNotAskAgain, setDoNotAskAgain] = useState(false);
 
   useEffect(() => {
     console.log("useAuth token:", token);
@@ -45,37 +47,37 @@ export const TracksProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const fetchTracks = useCallback(
-    async (retryCount = 0) => {
+    async (retryCount = 0): Promise<Track[]> => {
       if (!token) {
         console.error("No token available");
-        return;
+        return [];
       }
-
+  
       console.log(
         `Attempting to fetch tracks with token (attempt ${retryCount + 1}):`,
         token
       );
-
+  
       const maxRetries = 3;
       const retryDelay = 1000; // 1 second
-
+  
       try {
         const response = await fetch(`${backendUrl}/tracks`, {
           headers: { Authorization: `Bearer ${token}` },
         });
-
+  
         if (response.status === 401) {
           const errorBody = await response.text();
           console.error("401 Unauthorized. Response body:", errorBody);
-
+  
           if (retryCount >= maxRetries) {
             console.error("Max retries reached. Unable to fetch tracks.");
-            return;
+            return [];
           }
-
+  
           console.log("Token expired. Attempting to refresh...");
           const newToken = await refreshToken();
-
+  
           if (newToken) {
             console.log("Token refreshed. Retrying fetch with new token...");
             setToken(newToken);
@@ -83,19 +85,21 @@ export const TracksProvider: React.FC<{ children: React.ReactNode }> = ({
             return fetchTracks(retryCount + 1);
           } else {
             console.error("Failed to refresh token");
-            return;
+            return [];
           }
         }
-
+  
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
-
+  
         const tracks = await handleResponse<Track[]>(response);
         console.log("Tracks fetched successfully:", tracks);
         setTracks(tracks);
+        return tracks; // Return the fetched tracks
       } catch (error) {
         console.error("Error fetching tracks:", error);
+        return []; // Return an empty array in case of error
       }
     },
     [token, refreshToken, setToken]
@@ -158,13 +162,23 @@ export const TracksProvider: React.FC<{ children: React.ReactNode }> = ({
       console.error("No token available");
       throw new Error("No token available");
     }
-
+  
     try {
       const response = await fetch(`${backendUrl}/tracks/${id}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });
-      await handleResponse(response);
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to delete track');
+      }
+  
+      const result = await response.json();
+      console.log(result.message); // Log the success message
+  
+      setTracks((prevTracks) => prevTracks.filter((track) => track.id !== id));
+      return result;
     } catch (error) {
       console.error(`Error deleting track with ID ${id}:`, error);
       throw error;
@@ -278,6 +292,10 @@ export const TracksProvider: React.FC<{ children: React.ReactNode }> = ({
         fetchTracks,
         uploadTrack,
         clearTracks,
+        showDeleteModal,
+        setShowDeleteModal,
+        doNotAskAgain,
+        setDoNotAskAgain,
       }}
     >
       {children}

@@ -9,7 +9,7 @@ interface PlaybackProviderProps {
 export const PlaybackProvider: FC<PlaybackProviderProps> = ({ children }) => {
     const [isPlaying, setIsPlaying] = useState(false);
     const [currentTrack, setCurrentTrack] = useState<Track | null>(null);
-    const [currentTrackIndex, setCurrentTrackIndex] = useState(-1);
+    const [currentTrackIndex, setCurrentTrackIndex] = useState<number | null>(null);
     const [spacebarPlaybackEnabled, setSpacebarPlaybackEnabled] = useState(true);
     const [isCommentInputFocused, setIsCommentInputFocused] = useState(false); 
     const [playbackSpeed, setPlaybackSpeed] = useState(1.0);
@@ -23,9 +23,13 @@ export const PlaybackProvider: FC<PlaybackProviderProps> = ({ children }) => {
         setIsPlaying(prevIsPlaying => !prevIsPlaying);
     }, []);
 
-    const selectTrack = useCallback((track: Track, index: number) => {
+    const selectTrack = useCallback((track: Track | null, index: number | null) => {
         console.log("Selecting track:", track);
-        if (currentTrack?.id === track.id && isPlaying) {
+        if (track === null) {
+            setCurrentTrack(null);
+            setCurrentTrackIndex(null);
+            setIsPlaying(false);
+        } else if (currentTrack?.id === track.id && isPlaying) {
             setIsPlaying(false);
         } else {
             setCurrentTrack(track);
@@ -35,16 +39,24 @@ export const PlaybackProvider: FC<PlaybackProviderProps> = ({ children }) => {
     }, [currentTrack?.id, isPlaying]);
 
     const nextTrack = useCallback((tracks: Track[]) => {
-        // Ensure 'tracks' is passed as an argument when calling this function
-        const nextIndex = (currentTrackIndex + 1) % tracks.length;
+        if (tracks.length === 0) return; // No tracks to play
+        
+        const nextIndex = currentTrackIndex !== null 
+          ? (currentTrackIndex + 1) % tracks.length 
+          : 0; // If no track is currently selected, start from the beginning
+        
         selectTrack(tracks[nextIndex], nextIndex);
-    }, [currentTrackIndex, selectTrack]); // Removed tracks.length from dependencies
-
-    const previousTrack = useCallback((tracks: Track[]) => {
-        // Ensure 'tracks' is passed as an argument when calling this function
-        const prevIndex = (currentTrackIndex - 1 + tracks.length) % tracks.length;
+      }, [currentTrackIndex, selectTrack]);
+      
+      const previousTrack = useCallback((tracks: Track[]) => {
+        if (tracks.length === 0) return; // No tracks to play
+        
+        const prevIndex = currentTrackIndex !== null 
+          ? (currentTrackIndex - 1 + tracks.length) % tracks.length 
+          : tracks.length - 1; // If no track is currently selected, start from the end
+        
         selectTrack(tracks[prevIndex], prevIndex);
-    }, [currentTrackIndex, selectTrack]); // Removed tracks.length from dependencies
+      }, [currentTrackIndex, selectTrack]);
 
     return (
         <PlaybackContext.Provider value={

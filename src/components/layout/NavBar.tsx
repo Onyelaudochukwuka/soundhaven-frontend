@@ -2,6 +2,7 @@ import React, { ReactNode, useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/UseAuth';
 import { FaBars } from 'react-icons/fa';
+import { usePlaylists } from '@/hooks/UsePlaylists';
 
 interface NavBarProps {
   children: ReactNode;
@@ -13,6 +14,7 @@ const NavBar: React.FC<NavBarProps> = ({ children, onLoginClick, onRegisterClick
   const { user, logout, loading } = useAuth();
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef(null);
+  const { clearPlaylists } = usePlaylists();
 
   const toggleDropdown = () => setShowDropdown(!showDropdown);
 
@@ -24,8 +26,9 @@ const NavBar: React.FC<NavBarProps> = ({ children, onLoginClick, onRegisterClick
 
   // Define handleLogout function
   const handleLogout = () => {
-    logout(); // Call the logout method from useAuth hook
-    setShowDropdown(false); // Optionally close the dropdown
+    clearPlaylists();
+    logout();
+    setShowDropdown(false);
   };
 
   useEffect(() => {

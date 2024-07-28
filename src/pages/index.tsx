@@ -3,13 +3,13 @@ import Head from 'next/head';
 import Header from '../components/layout/SidebarLeft';
 import MainContent from '../components/layout/MainContent';
 import Footer from '../components/layout/Footer';
-import { Track } from '../../types/types';
 import { useAuth } from '@/hooks/UseAuth';
 import LoginForm from '@/components/auth/LoginForm';
 import RegisterForm from '@/components/auth/RegisterForm';
 import Modal from '@/components/Modal';
 import NavBar from '@/components/layout/NavBar';
 import { useRouter } from 'next/router';
+import { useTracks } from '@/hooks/UseTracks';
 
 const HomePage: React.FC = () => {
   const [error, setError] = useState('');
@@ -34,7 +34,6 @@ const HomePage: React.FC = () => {
 
   const toggleModal = () => setIsModalOpen(!isModalOpen);
 
-  // Simplify the modal handling to directly close after login
   const closeModal = () => {
     setIsModalOpen(false);
     console.log("Closing modal directly.");
@@ -80,7 +79,6 @@ const HomePage: React.FC = () => {
         </Head>
 
         <Header />
-        <div className="bg-red-500 p-4 text-white min-w-32">Anon&apos;s Library</div>
         <MainContent error={error}/>
       </div>
 

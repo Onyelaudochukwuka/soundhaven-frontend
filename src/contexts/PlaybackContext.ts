@@ -1,4 +1,4 @@
-import { createContext, useContext } from 'react';
+import { createContext } from 'react';
 import { Track } from '../../types/types';
 
 export interface PlaybackContextValue {

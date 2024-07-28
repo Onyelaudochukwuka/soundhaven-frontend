@@ -3,6 +3,7 @@ import { AuthContext } from '@/contexts/AuthContext';
 import { User } from '../../types/types';
 import { backendUrl, handleResponse, logoutAPI } from '@/services/apiService';
 import { useTracks } from '@/hooks/UseTracks';
+import { usePlaylists } from '@/hooks/UsePlaylists';
 
 interface AuthProviderProps {
   children: ReactNode;
@@ -13,6 +14,7 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const { clearTracks } = useTracks();
+  const { clearPlaylists } = usePlaylists();
 
   useEffect(() => {
     const initializeAuthState = async () => {
@@ -139,6 +141,8 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
 
       // Clear tracks before clearing user and token
       clearTracks();
+      clearPlaylists();
+
       console.log("Tracks cleared");
 
       setUser(null);
