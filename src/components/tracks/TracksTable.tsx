@@ -8,7 +8,12 @@ import { usePlayback } from "@/hooks/UsePlayback";
 import { useAuth } from "@/hooks/UseAuth";
 import { usePlaylists } from "@/hooks/UsePlaylists";
 import TrackItem from "./TrackItem";
-import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
+import { DndContext, closestCenter, arrayMove } from "@dnd-kit/core";
+import {
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
 
 interface TracksTableProps {
   tracks: Track[];
@@ -99,32 +104,25 @@ const TracksTable: React.FC<TracksTableProps> = ({
     setSelectedTrackId(trackId);
   };
 
-  const handleTrackDragEnd = useCallback(
-    (result) => {
-      console.log("handleTrackDragEnd called with result:", result);
-      if (!result.destination) {
-        console.log("No destination, returning");
-        return;
+  const handleDragEnd = (event) => {
+    const { active, over } = event;
+    if (active.id !== over.id) {
+      const oldIndex = tracks.findIndex((track) => track.id === active.id);
+      const newIndex = tracks.findIndex((track) => track.id === over.id);
+      if (onReorderTracks) {
+        onReorderTracks(oldIndex, newIndex);
       }
-      if (!isPlaylistView) {
-        console.log("Not in playlist view, returning");
-        return;
-      }
-      if (!onReorderTracks) {
-        console.log("onReorderTracks not available, returning");
-        return;
-      }
-
-      onReorderTracks(result.source.index, result.destination.index);
-    },
-    [isPlaylistView, onReorderTracks]
-  );
+    }
+  };
 
   console.log("TracksTable: Rendering with tracks", tracks);
 
   return (
-    <>
-      <DragDropContext onDragEnd={handleTrackDragEnd}>
+    <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+      <SortableContext
+        items={tracks.map((track) => track.id)}
+        strategy={verticalListSortingStrategy}
+      >
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
@@ -143,63 +141,36 @@ const TracksTable: React.FC<TracksTableProps> = ({
               <th className="px-4 py-2"></th>
             </tr>
           </thead>
-          <Droppable droppableId="tracks" direction="vertical">
-            {(provided) => (
-              <tbody
-                {...provided.droppableProps}
-                ref={provided.innerRef}
-                className="bg-white divide-y divide-gray-200"
-              >
-                {tracks.map((track, index) => (
-                  <Draggable
-                    key={`track-${track.id}`}
-                    draggableId={`track-${track.id}`}
-                    index={index}
-                    isDragDisabled={!isPlaylistView}
-                  >
-                    {(provided, snapshot) => (
-                      // <tr
-                      //   ref={provided.innerRef}
-                      //   {...provided.draggableProps}
-                      //   {...provided.dragHandleProps}
-                      //   className={`${
-                      //     snapshot.isDragging ? "bg-gray-100" : ""
-                      //   }`}
-                      // >
-                      <TrackItem
-                        key={track.id}
-                        track={track}
-                        index={index}
-                        onDelete={handleDelete}
-                        onUpdate={onUpdate}
-                        onEdit={openModal}
-                        isCurrent={currentTrack?.id === track.id}
-                        isSelected={selectedTrackId === track.id}
-                        onSelectTrack={setSelectedTrackId}
-                        provided={provided}
-                        snapshot={snapshot}
-                      />
-                      // </tr>
-                    )}
-                  </Draggable>
-                ))}
-                {provided.placeholder}
-              </tbody>
-            )}
-          </Droppable>
-        </table>
-      </DragDropContext>
 
-      <Modal isOpen={isModalOpen} onClose={closeModal}>
-        {editingTrack && (
-          <EditTrackForm
-            track={editingTrack}
-            closeModal={closeModal}
-            fetchTracks={() => {}}
-          />
-        )}
-      </Modal>
-    </>
+          <tbody className="bg-white divide-y divide-gray-200">
+            {tracks.map((track, index) => (
+              <TrackItem
+                key={track.id}
+                track={track}
+                index={index}
+                onDelete={handleDelete}
+                onUpdate={onUpdate}
+                onEdit={openModal}
+                isCurrent={currentTrack?.id === track.id}
+                isSelected={selectedTrackId === track.id}
+                onSelectTrack={setSelectedTrackId}
+                isPlaylistView={isPlaylistView}
+              />
+            ))}
+          </tbody>
+        </table>
+
+        <Modal isOpen={isModalOpen} onClose={closeModal}>
+          {editingTrack && (
+            <EditTrackForm
+              track={editingTrack}
+              closeModal={closeModal}
+              fetchTracks={() => {}}
+            />
+          )}
+        </Modal>
+      </SortableContext>
+    </DndContext>
   );
 };
 

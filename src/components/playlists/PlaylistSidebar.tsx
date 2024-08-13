@@ -1,4 +1,11 @@
-import React, { useState, useEffect, useCallback, useRef, useMemo, memo } from "react";
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+  useMemo,
+  memo,
+} from "react";
 import { Playlist, Track } from "../../../types/types";
 import { usePlaylists } from "@/hooks/UsePlaylists";
 import { useAuth } from "@/hooks/UseAuth";
@@ -6,29 +13,18 @@ import { useTracks } from "@/hooks/UseTracks";
 import PlaylistItem from "./PlaylistItem";
 import DuplicateTrackModal from "./DuplicateTrackModal";
 import {
-  Droppable,
-  Draggable,
-  DropResult,
-  DraggableProvided,
-  DragDropContext,
-} from "react-beautiful-dnd";
+  DndContext,
+  useDraggable,
+  useDroppable,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  arrayMove,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+
 import DragDropErrorBoundary from "@/error-boundaries/DragDropErrorBoundary";
-
-interface MemoizedDraggableProps {
-  playlist: Playlist;
-  index: number;
-  children: (provided: DraggableProvided) => React.ReactElement;
-}
-
-const MemoizedDraggable = memo<MemoizedDraggableProps>(({ playlist, index, children }) => (
-  <Draggable
-    key={`playlist-${playlist.id}`}
-    draggableId={`playlist-${playlist.id}`}
-    index={index}
-  >
-    {children}
-  </Draggable>
-));
 
 interface PlaylistSidebarProps {
   onSelectPlaylist: (tracks: Track[], playlistId: number) => void;
@@ -50,6 +46,7 @@ const PlaylistSidebar: React.FC<PlaylistSidebarProps> = ({
     fetchPlaylistById,
     updatePlaylistOrder,
     setPlaylists,
+    updatePlaylistMetadata,
   } = usePlaylists();
   const { user, token } = useAuth();
   const { fetchTracks } = useTracks();
@@ -70,16 +67,10 @@ const PlaylistSidebar: React.FC<PlaylistSidebarProps> = ({
   } | null>(null);
 
   const libraryButtonRef = useRef<HTMLButtonElement>(null);
-  const [isDndReady, setIsDndReady] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     if (token) {
-      setIsDndReady(true);
-      fetchPlaylists().then(() => setIsLoading(false));
-    } else {
-      setIsDndReady(false);
-      setIsLoading(false);
+      fetchPlaylists();
     }
   }, [token, fetchPlaylists]);
 
@@ -91,12 +82,6 @@ const PlaylistSidebar: React.FC<PlaylistSidebarProps> = ({
       }
     }
   }, [editingPlaylistId, playlists]);
-
-  useEffect(() => {
-    console.log("Playlists updated:", playlists);
-  }, [playlists]);
-
-  console.log("Rendering PlaylistSidebar, playlists:", playlists);
 
   const handleCreatePlaylist = async () => {
     try {
@@ -157,7 +142,7 @@ const PlaylistSidebar: React.FC<PlaylistSidebarProps> = ({
 
   const handlePlaylistNameBlur = async () => {
     if (editingPlaylistId !== null) {
-      await updatePlaylist(editingPlaylistId, { name: playlistTitle });
+      await updatePlaylistMetadata(editingPlaylistId, { name: playlistName });
       setEditingPlaylistId(null);
     }
   };
@@ -177,10 +162,11 @@ const PlaylistSidebar: React.FC<PlaylistSidebarProps> = ({
         // Update the playlist in the UI
         const updatedPlaylist = await fetchPlaylistById(playlistId);
         if (updatedPlaylist) {
-          // Update the playlists state with the new playlist
-          // This depends on how your state is structured
-          // For example:
-          // setPlaylists(prevPlaylists => prevPlaylists.map(p => p.id === playlistId ? updatedPlaylist : p));
+          setPlaylists((prevPlaylists) =>
+            prevPlaylists.map((p) =>
+              p.id === playlistId ? updatedPlaylist : p
+            )
+          );
         }
       }
     } catch (error) {
@@ -189,14 +175,14 @@ const PlaylistSidebar: React.FC<PlaylistSidebarProps> = ({
     }
   };
 
-  const handleDrop = async (
-    e: React.DragEvent<HTMLLIElement>,
-    playlistId: number
-  ) => {
-    e.preventDefault();
-    const trackId = e.dataTransfer.getData("text/plain");
-    await handleAddTrackToPlaylist(playlistId, Number(trackId));
-  };
+  // const handleDrop = async (
+  //   e: React.DragEvent<HTMLLIElement>,
+  //   playlistId: number
+  // ) => {
+  //   e.preventDefault();
+  //   const trackId = e.dataTransfer.getData("text/plain");
+  //   await handleAddTrackToPlaylist(playlistId, Number(trackId));
+  // };
 
   const handleConfirmDuplicateAdd = async () => {
     if (duplicateTrackInfo) {
@@ -207,14 +193,6 @@ const PlaylistSidebar: React.FC<PlaylistSidebarProps> = ({
       );
       setIsDuplicateModalOpen(false);
       setDuplicateTrackInfo(null);
-    }
-  };
-
-  const handleLibraryClick = async () => {
-    try {
-      await fetchTracks();
-    } catch (error) {
-      setError("Failed to load tracks");
     }
   };
 
@@ -276,60 +254,10 @@ const PlaylistSidebar: React.FC<PlaylistSidebarProps> = ({
     };
   }, [handleKeyDown]);
 
-  const onDragEnd = useCallback(
-    (result: DropResult) => {
-      console.log("onDragEnd called with result:", result);
-      if (!result.destination) {
-        console.log("No destination, returning");
-        return;
-      }
-      if (result.source.index === result.destination.index) {
-        console.log("Source and destination index are the same, returning");
-        return;
-      }  
-  
-      console.log("Current playlists:", playlists);
-      const newPlaylists = Array.from(playlists);
-      const [reorderedItem] = newPlaylists.splice(result.source.index, 1);
-      newPlaylists.splice(result.destination.index, 0, reorderedItem);
-  
-      console.log("New playlist order:", newPlaylists.map(p => p.id));
-
-      // Update the playlists state optimistically
-      setPlaylists(newPlaylists);
-  
-      // Call API to update the order in the backend
-      const playlistIds = newPlaylists.map((playlist) => playlist.id);
-      updatePlaylistOrder(playlistIds)
-        .then((updatedPlaylists) => {
-          console.log("Playlists returned from API:", updatedPlaylists);
-          // Update with the server response to ensure consistency
-          setPlaylists(updatedPlaylists);
-        })
-        .catch((error) => {
-          console.error("Failed to update playlist order:", error);
-          console.error("Error details:", error.response?.data);
-          // Revert to the original order if the API call fails
-          fetchPlaylists();
-        });
-    },
-    [playlists, setPlaylists, updatePlaylistOrder, fetchPlaylists]
-  );
-
-  useEffect(() => {
-    console.log("isDndReady: •", isDndReady);
-    console.log("playlists:", playlists);
-  }, [isDndReady, playlists]);
-
-  useEffect(() => {
-    if (playlists.length > 0) {
-      setIsDndReady(true);
-    }
-  }, [playlists]);
-
-  if (isLoading) {
-    return <div>Loading playlists...</div>;
-  }
+  // Create state var for isLoading, setIsLoading
+  // if (isLoading) {
+  //   return <div>Loading playlists...</div>;
+  // }
 
   if (!token) {
     return null; // Or return a message like "Please log in to view playlists"
@@ -342,88 +270,67 @@ const PlaylistSidebar: React.FC<PlaylistSidebarProps> = ({
 
   console.log("Rendering Droppable");
 
+  const handleDragEnd = (event) => {
+    const { active, over } = event;
+    if (active.id !== over.id) {
+      const oldIndex = playlists.findIndex((p) => p.id === Number(active.id));
+      const newIndex = playlists.findIndex((p) => p.id === Number(over.id));
+      const reorderedPlaylists = arrayMove(playlists, oldIndex, newIndex);
+      setPlaylists(reorderedPlaylists);
+      updatePlaylistOrder(reorderedPlaylists.map((p) => p.id));
+    }
+  };
+
   return (
-    <DragDropContext onDragEnd={onDragEnd}>
+    <DndContext onDragEnd={handleDragEnd}>
       <div className="playlist-sidebar p-4 bg-gray-800 text-white min-w-48">
-      <button
-        className="w-full bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-2 rounded"
-        onClick={handleCreatePlaylist}
-      >
-        Add Playlist
-      </button>
-      <button
-        ref={libraryButtonRef}
-        className="w-full hover:text-blue-400 text-white font-bold py-2 mt-2 rounded my-1 text-left"
-        onClick={onViewAllTracks}
-      >
-        {user ? `${user.name}'s Library` : "Anon’s Library"}
-      </button>
+        <button
+          className="w-full bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-2 rounded"
+          onClick={handleCreatePlaylist}
+        >
+          Add Playlist
+        </button>
+        <button
+          ref={libraryButtonRef}
+          className="w-full hover:text-blue-400 text-white font-bold py-2 mt-2 rounded my-1 text-left"
+          onClick={onViewAllTracks}
+        >
+          {user ? `${user.name}'s Library` : "Anon’s Library"}
+        </button>
 
-      <h3 className="font-bold my-1 py-2 border-b border-t border-gray-600">
-        Playlists
-      </h3>
+        <h3 className="font-bold my-1 py-2 border-b border-t border-gray-600">
+          Playlists
+        </h3>
 
-      {playlists.length > 0 && (
-          <Droppable droppableId="playlists">
-            {(provided) => (
-              <ul
-                {...provided.droppableProps}
-                ref={provided.innerRef}
-                className="px-1"
-              >
-                {playlists.length > 0 &&
-                  playlists.map((playlist, index) => {
-                    console.log(
-                      `Rendering Draggable for playlist: ${playlist.id}`
-                    );
-                    return playlist && playlist.id ? (
-                      <MemoizedDraggable
-                        key={`playlist-${playlist.id}`}
-                        playlist={playlist}
-                        index={index}
-                      >
-                        {(provided) => {
-                              console.log(`Rendering Draggable content for playlist: ${playlist.id}`);
-                              return (
-                          <li
-                            ref={provided.innerRef}
-                            {...provided.draggableProps}
-                            {...provided.dragHandleProps}
-                            onClick={() => handlePlaylistSelect(playlist.id)}
-                          >
-                              {/* <div>{playlist.name}</div> */}
+        <SortableContext
+          items={playlists.map((p) => p.id.toString())}
+          strategy={verticalListSortingStrategy}
+        >
+          <ul className="px-1">
+            {playlists.map((playlist) => (
+              <PlaylistItem
+                key={playlist.id}
+                playlist={playlist}
+                onEdit={() => {}}
+                onSelect={() => handlePlaylistSelect(playlist.id)}
+                isSelected={playlist.id === selectedPlaylistId}
+                onDrop={(e) => {
+                  const trackId = Number(e.dataTransfer.getData("text/plain"));
+                  handleAddTrackToPlaylist(playlist.id, trackId);
+                }}
+                onDelete={() => handleDeletePlaylist(playlist.id)}
+              />
+            ))}
+          </ul>
+        </SortableContext>
 
-                              <PlaylistItem
-                                playlist={playlist}
-                                onEdit={() => {}}
-                                onSelect={() =>
-                                  handlePlaylistSelect(playlist.id)
-                                }
-                                isSelected={playlist.id === selectedPlaylistId}
-                                onDrop={(e) => handleDrop(e, playlist.id)}
-                                onDelete={() =>
-                                  handleDeletePlaylist(playlist.id)
-                                }
-                              />
-                          </li>
-                        );
-                        }}
-                      </MemoizedDraggable>
-                    ) : null;
-                  })}
-
-                {provided.placeholder}
-              </ul>
-            )}
-          </Droppable>
-      )}
-      <DuplicateTrackModal
-        isOpen={isDuplicateModalOpen}
-        onClose={() => setIsDuplicateModalOpen(false)}
-        onConfirm={handleConfirmDuplicateAdd}
-      />
-    </div>
-    </DragDropContext>
+        <DuplicateTrackModal
+          isOpen={isDuplicateModalOpen}
+          onClose={() => setIsDuplicateModalOpen(false)}
+          onConfirm={handleConfirmDuplicateAdd}
+        />
+      </div>
+    </DndContext>
   );
 };
 

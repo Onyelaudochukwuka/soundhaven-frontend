@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { Track } from "../../../types/types";
 import { usePlayback } from "@/hooks/UsePlayback";
-import { DraggableProvided, DraggableStateSnapshot } from "react-beautiful-dnd";
+import { useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 interface TrackItemProps {
   track: Track;
@@ -12,8 +13,7 @@ interface TrackItemProps {
   isCurrent: boolean;
   isSelected: boolean;
   onSelectTrack: (trackId: number) => void;
-  provided: any;
-  snapshot: any;
+  isPlaylistView: boolean;
 }
 
 const TrackItem: React.FC<TrackItemProps> = ({
@@ -25,11 +25,24 @@ const TrackItem: React.FC<TrackItemProps> = ({
   isCurrent,
   isSelected,
   onSelectTrack,
-  provided,
-  snapshot,
+  isPlaylistView,
 }) => {
   const { selectTrack } = usePlayback();
   const [openMenuTrackId, setOpenMenuTrackId] = useState<number | null>(null);
+
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: track.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
 
   const handleClick = () => {
     onSelectTrack(track.id);
@@ -71,14 +84,15 @@ const TrackItem: React.FC<TrackItemProps> = ({
 
   return (
     <tr
-      ref={provided.innerRef}
-      {...provided.draggableProps}
-      {...provided.dragHandleProps}
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
       onClick={handleClick}
       onDoubleClick={handleDoubleClick}
       className={`hover:bg-gray-100 ${isCurrent ? "bg-blue-100" : ""} ${
         isSelected ? "bg-blue-200" : ""
-      } ${snapshot.isDragging ? "bg-gray-100" : ""}`}
+      } ${isDragging ? "bg-gray-100" : ""}`}
     >
       <td className="px-4 py-2">{track.name}</td>
       <td className="px-4 py-2">{track.artist?.name ?? "Unknown Artist"}</td>
